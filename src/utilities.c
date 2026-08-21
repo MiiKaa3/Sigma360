@@ -41,7 +41,7 @@ int read_file(char* dir, char** file)
     return 0;
 }
 
-int build_tree(char* root, char** course)
+int build_tree(char* root, char** courses)
 {
     char* file;
     read_file("cmds/courses.json", &file);
