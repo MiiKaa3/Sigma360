@@ -1,11 +1,10 @@
 #include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
 
 #include <cli.h>
 
-void version_msg();
-void usage_msg();
+void version_msg(void);
+void usage_msg(void);
 
 int main(int argc, char **argv) {
     if (argc > 1) {
@@ -32,11 +31,11 @@ int main(int argc, char **argv) {
     return 0;
 }
 
-void version_msg(){
+void version_msg(void){
     printf("Sigma360 version 0.1.0\n");
 }
 
-void usage_msg() {
+void usage_msg(void) {
     printf("Usage: sigma360 [arguments]\n");
     printf("Arguments:\n");
     printf("  --version   Show version information\n");

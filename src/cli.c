@@ -8,13 +8,13 @@
 #include <locale.h>
 #include <langinfo.h>
 
-void sigma360_welcome_msg();
-void sigma360_prompt();
-void set_terminal_props();
+void sigma360_welcome_msg(void);
+void sigma360_prompt(void);
+void set_terminal_props(void);
 const char *C_RESET, *C_RED, *C_GREEN, *C_BLUE, *D_BAR, *D_EMPTY, *U_HIDE, *U_SHOW;
-void sigma360_watch();
+void sigma360_watch(void);
 
-void sigma360_cli() {
+void sigma360_cli(void) {
     sigma360_welcome_msg();
     set_terminal_props();
     char input[256];
@@ -61,7 +61,7 @@ void sigma360_cli() {
     }   
 }
 
-void sigma360_welcome_msg() {
+void sigma360_welcome_msg(void) {
     printf("   _____ _     Welcome to        ____    __   ___  \n"
            "  / ____(_)                     |___ \\  / /  / _ \\ \n"
            " | (___  _  __ _ _ __ ___   __ _  __) |/ /_ | | | |\n"
@@ -73,11 +73,11 @@ void sigma360_welcome_msg() {
     printf("Type 'help' for a list of commands.\n");
 }
 
-void sigma360_prompt(){
+void sigma360_prompt(void){
     printf("%sSigma360> %s", C_GREEN, C_RESET);
 }
 
-void set_terminal_props() {
+void set_terminal_props(void) {
     int color_supported = 1;
     int utf8_supported = 1;
 
@@ -128,7 +128,7 @@ void set_terminal_props() {
     U_SHOW = "\033[?25h";
 }
 
-void sigma360_watch() {
+void sigma360_watch(void) {
     printf("%sDownloading video...\n", U_HIDE);
 
     srand(time(NULL));
