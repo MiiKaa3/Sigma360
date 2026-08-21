@@ -68,4 +68,6 @@ compile_commands.json
 .cache/
 CMakeUserPresets.json
 cookies.json
+*cook*.json
 Makefile
+/src
