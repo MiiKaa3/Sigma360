@@ -10,10 +10,13 @@ set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_C_EXTENSIONS ON)
 
 if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
-    set(CMAKE_BUILD_TYPE "Release" CACHE STRING "Build type" FORCE)
+set(CMAKE_BUILD_TYPE "Release" CACHE STRING "Build type" FORCE)
 endif()
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
+find_package(PkgConfig REQUIRED)
+pkg_check_modules(NOTCURSES REQUIRED IMPORTED_TARGET notcurses-core)
 
 add_executable(sigma360
     src/main.c
@@ -22,6 +25,7 @@ add_executable(sigma360
 )
 
 target_include_directories(sigma360 PRIVATE src)
+target_link_libraries(sigma360 PRIVATE PkgConfig::NOTCURSES)
 
 target_compile_options(sigma360 PRIVATE
     $<$<C_COMPILER_ID:GNU,Clang>:-Werror -Wall -Wextra -Wpedantic>
