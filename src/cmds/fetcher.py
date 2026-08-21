@@ -9,7 +9,7 @@ class Fetcher():
     def __init__(self, course_code: str, lecture_number: str):
         self.course_code = course_code
         self.lecture_number = lecture_number
-        self.session = self.load_session("cook.json")
+        self.session = self.load_session("cookies.json")
 
     def load(self):
         self.check_auth()
@@ -34,14 +34,11 @@ class Fetcher():
         
         return 0
         
-
-
-
     def fetch(self):
         self.check_auth()
-        r = self.session.get("https://echo360.net.au/user/enrollments")
-        data = r.json()
-        print_tree(data)
+
+        
+        
 
     def load_session(self, cookie_file:str) -> requests.Session:
         session = requests.Session()
@@ -147,5 +144,10 @@ def print_tree(obj, indent=0):
 
 if __name__ == "__main__":
     fetcher = Fetcher("STAT3004", "12")
-    fetcher.load()
-    
+    url = f"https://echo360.net.au/section/faa364b6-a253-44fe-acac-1d1a438bf11a/home"
+    r = fetcher.session.get(url)
+
+    print(r.status_code)
+    print(r.url)
+    print(r.headers.get("content-type"))
+    print(r.text[:2000])
