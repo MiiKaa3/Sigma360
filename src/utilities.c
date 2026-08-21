@@ -1,6 +1,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <stdio.h>
+#include <cjson/cJSON.h>
 
 int findcwd(char** buf)
 {
@@ -13,4 +14,22 @@ int findcwd(char** buf)
     *buf = malloc(size * sizeof(char));
     getcwd(*buf, size);
     return 0;
+}
+
+int read_file(char* dir, char** file)
+{
+    FILE* json = fopen(dir);
+    *file = malloc(sizeof(char));
+    int size = 0;
+
+    char c;
+    for ((c = fgetc(json)) != EOF) {
+        *file = realloc(*file, ++size * sizeof(char));
+        (*file)[size - 1] = c;
+    }
+}
+
+int build_tree(char* root, char** courses)
+{
+
 }
