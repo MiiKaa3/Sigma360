@@ -35,16 +35,6 @@ class Fetcher():
         
         return 0
         
-<<<<<<< HEAD
-
-
-
-    def fetch(self):
-        self.check_auth()
-        r = self.session.get("https://echo360.net.au/user/enrollments")
-        data = r.json()
-        print_tree(data)
-=======
     def watch(self, url, path):
         self.check_auth()
 
@@ -60,7 +50,6 @@ class Fetcher():
                 output_path,
         ]
         subprocess.run(cmd, check=True)        
->>>>>>> d72f505 (updating to latest ver)
 
     def load_session(self, cookie_file:str) -> requests.Session:
         session = requests.Session()
