@@ -11,4 +11,6 @@ int build_tree(char* root, char** courses);
 
 cJSON *get_json(char* filename);
 
+void sort_cjson_array(cJSON *array);
+
 #endif // __UTILITIES_H__

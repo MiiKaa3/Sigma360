@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <stdio.h>
+#include <string.h>
 #include <cjson/cJSON.h>
 
 int findcwd(char** buf)
@@ -89,4 +90,57 @@ cJSON *get_json(char* filename)
     }
 
     return json_data;
+}
+
+int compare_sem_then_code(const void *a, const void *b) {
+    const cJSON *item_a = *(const cJSON **)a;
+    const cJSON *item_b = *(const cJSON **)b;
+
+    const cJSON *yearsem_a = cJSON_GetObjectItemCaseSensitive(item_a, "yearSem");
+    const cJSON *yearsem_b = cJSON_GetObjectItemCaseSensitive(item_b, "yearSem");
+
+    const char *str_a = cJSON_IsString(yearsem_a) ? yearsem_a->valuestring : "";
+    const char *str_b = cJSON_IsString(yearsem_b) ? yearsem_b->valuestring : "";
+
+    int result = strcmp(str_a, str_b);
+    if (result != 0) {
+        // reverse it; we want descending order for yearSem
+        return -result;
+    }
+
+    // Names are equal — fall back to "code" as the tiebreaker
+    const cJSON *code_a = cJSON_GetObjectItemCaseSensitive(item_a, "courseCode");
+    const cJSON *code_b = cJSON_GetObjectItemCaseSensitive(item_b, "courseCode");
+
+    const char *code_str_a = cJSON_IsString(code_a) ? code_a->valuestring : "";
+    const char *code_str_b = cJSON_IsString(code_b) ? code_b->valuestring : "";
+
+    return strcmp(code_str_a, code_str_b);
+}
+
+void sort_cjson_array(cJSON *array) {
+    int count = cJSON_GetArraySize(array);
+    if (count < 2) return;
+
+    // Step 1: pull pointers out into a plain C array
+    cJSON **items = malloc(count * sizeof(cJSON *));
+    for (int i = 0; i < count; i++) {
+        items[i] = cJSON_GetArrayItem(array, i);
+    }
+
+    // Step 2: sort the plain array
+    qsort(items, count, sizeof(cJSON *), compare_sem_then_code);
+
+    // Step 3: detach all items from the original array (without freeing them)
+    // then re-add them in sorted order
+    cJSON *dummy;
+    while ((dummy = cJSON_DetachItemFromArray(array, 0)) != NULL) {
+        // just draining the array; items[] still holds valid pointers
+    }
+
+    for (int i = 0; i < count; i++) {
+        cJSON_AddItemToArray(array, items[i]);
+    }
+
+    free(items);
 }

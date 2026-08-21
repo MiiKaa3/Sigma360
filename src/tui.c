@@ -39,7 +39,7 @@ static void destroy_panes(panes_t *panes) {
     panes->preview = NULL;
 }
 
-static int layout_panes(struct notcurses *nc, panes_t *panes) {
+static int layout_panes(struct notcurses *nc, panes_t *panes, cJSON *json) {
     struct ncplane *std = notcurses_stdplane(nc);
     unsigned rows, cols;
     ncplane_dim_yx(std, &rows, &cols);
@@ -60,8 +60,20 @@ static int layout_panes(struct notcurses *nc, panes_t *panes) {
         return -1;
     }
 
+    cJSON *element = NULL;
+    int y = 1;
+    cJSON_ArrayForEach(element, json) {
+        cJSON *course_code = cJSON_GetObjectItemCaseSensitive(element, "courseCode");
+        cJSON *course_name = cJSON_GetObjectItemCaseSensitive(element, "courseName");
+        if (cJSON_IsString(course_code) && (course_code->valuestring != NULL) && cJSON_IsString(course_name) && (course_name->valuestring != NULL)) {
+            ncplane_putstr_yx(panes->current, y, 2, course_code->valuestring);
+            ncplane_putstr_yx(panes->current, y, strlen(course_code->valuestring) + 2, " - ");
+            ncplane_putstr_yx(panes->current, y, strlen(course_code->valuestring) + 5, course_name->valuestring);
+            y++;
+        }
+    }
+
     ncplane_putstr_yx(panes->parent,  1, 2, "parent");
-    ncplane_putstr_yx(panes->current, 1, 2, "current");
     ncplane_putstr_yx(panes->preview, 1, 2, "preview");
     ncplane_putstr_yx(panes->preview, 3, 2, "Press 'q' or ESC to exit.");
 
@@ -74,15 +86,7 @@ int sigma360_tui(void) {
         fprintf(stderr, "[ERROR] Failed to load JSON data.\n");
         return 1;
     }
-    char* str = cJSON_Print(json);
-    if (!str) {
-        fprintf(stderr, "[ERROR] Failed to print JSON data.\n");
-        cJSON_Delete(json);
-        return 1;
-    }
-    printf("%s\n", str);
-    free(str);
-    cJSON_Delete(json);
+    sort_cjson_array(json);
 
     struct notcurses_options opts = {0};
     opts.flags = NCOPTION_SUPPRESS_BANNERS;
@@ -93,7 +97,7 @@ int sigma360_tui(void) {
     }
 
     panes_t panes = {0};
-    if (layout_panes(nc, &panes) != 0) {
+    if (layout_panes(nc, &panes, json) != 0) {
         notcurses_stop(nc);
         return 1;
     }
@@ -112,7 +116,7 @@ int sigma360_tui(void) {
         }
         if (id == NCKEY_RESIZE) {
             destroy_panes(&panes);
-            if (layout_panes(nc, &panes) != 0) {
+            if (layout_panes(nc, &panes, json) != 0) {
                 break;
             }
             notcurses_render(nc);
@@ -125,5 +129,6 @@ int sigma360_tui(void) {
 
     destroy_panes(&panes);
     notcurses_stop(nc);
+    cJSON_Delete(json);
     return 0;
 }
