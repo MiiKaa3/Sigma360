@@ -188,13 +188,3 @@ int play_lecture(Parameters* params)
     wait(NULL);
     return GOOD;
 }
-
-char* buildArgs(char* option, char* var) 
-{
-    int len = snprintf(NULL, 0, "--start-time=%s",
-            params->options.startTime);
-    char* str = malloc(++len * sizeof(char));
-    int len = snprintf(str, len, "--start-time=%s",
-            params->options.startTime);
-    return str;
-}

@@ -5,6 +5,8 @@ int findcwd(char** buf);
 
 int read_file(char* dir, char** file);
 
-int build_tree(char* root, char** courses);
+int build_tree(char** root);
+
+char* buildArgs(char* option, char* var);
 
 #endif // __UTILITIES_H__
