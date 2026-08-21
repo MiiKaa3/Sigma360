@@ -79,8 +79,6 @@ if __name__ == "__main__":
         print(r.url)
         soup = BeautifulSoup(r.text, "html.parser")
         print(soup.prettify())
-        # boxes = soup.find_all('div', class_="element-details summary")
-        # print(boxes)
     else:
         print("Auth failed. Cookies expired or missing.")
 
