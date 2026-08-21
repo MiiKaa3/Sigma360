@@ -11,8 +11,8 @@
 void sigma360_welcome_msg(void);
 void sigma360_prompt(void);
 void set_terminal_props(void);
-const char *C_RESET, *C_RED, *C_GREEN, *C_BLUE, *D_BAR, *D_EMPTY, *U_HIDE, *U_SHOW;
 void sigma360_watch(void);
+const char *C_RESET, *C_RED, *C_GREEN, *C_BLUE, *D_BAR, *D_EMPTY, *U_HIDE, *U_SHOW;
 
 void sigma360_cli(void) {
     sigma360_welcome_msg();
@@ -58,7 +58,7 @@ void sigma360_cli(void) {
         else {
             printf("Unknown command: %s\n", input);
         }
-    }   
+    }
 }
 
 void sigma360_welcome_msg(void) {

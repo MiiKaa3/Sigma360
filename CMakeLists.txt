@@ -18,6 +18,7 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 add_executable(sigma360
     src/main.c
     src/cli.c
+    src/tui.c
 )
 
 target_include_directories(sigma360 PRIVATE src)

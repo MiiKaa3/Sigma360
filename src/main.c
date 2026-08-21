@@ -1,7 +1,8 @@
 #include <stdio.h>
 #include <string.h>
 
-#include <cli.h>
+#include "cli.h"
+#include "tui.h"
 
 void version_msg(void);
 void usage_msg(void);
@@ -15,8 +16,7 @@ int main(int argc, char **argv) {
         } else if (strcmp(argv[1], "--cli") == 0) {
             sigma360_cli();
         } else if (strcmp(argv[1], "--tui") == 0) {
-            fprintf(stderr, "[ERROR] TUI mode is not implemented yet.\n");
-            return 1;
+            sigma360_tui();
         } else {
             fprintf(stderr, "[ERROR] Unknown argument: %s\n", argv[1]);
             usage_msg();
