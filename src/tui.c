@@ -1,4 +1,5 @@
 #include "tui.h"
+#include "utilities.h"
 
 #include <notcurses/notcurses.h>
 #include <cjson/cJSON.h>
@@ -9,6 +10,12 @@ typedef struct {
     struct ncplane *current;
     struct ncplane *preview;
 } panes_t;
+
+typedef struct {
+    struct ncplane *plane;
+    int y;
+    int maxy;
+} cursor_t;
 
 static struct ncplane *make_pane(struct ncplane *std, int y, int x, unsigned rows, unsigned cols, uint32_t border_rgb) {
     struct ncplane_options opts = {
@@ -38,7 +45,84 @@ static void destroy_panes(panes_t *panes) {
     panes->preview = NULL;
 }
 
-static int layout_panes(struct notcurses *nc, panes_t *panes) {
+static int create_cursor(struct ncplane *parent, cursor_t *cur, int max) {
+    struct ncplane_options nopts = {
+        .y = 1,
+        .x = 1,
+        .rows = 1,
+        .cols = (unsigned)ncplane_dim_x(parent) - 2, // inset from parent border
+    };
+    cur->plane = ncplane_create(parent, &nopts);
+    if (!cur->plane) {
+        return -1;
+    }
+
+    ncplane_set_base(cur->plane, "", 0, 0);
+    uint64_t channels = 0;
+    ncchannels_set_bg_rgb(&channels, 0x2f7482); // 0x67a176
+    ncchannels_set_fg_alpha(&channels, NCALPHA_TRANSPARENT); // let underlying glyph's own fg color show
+    ncplane_set_base(cur->plane, "", 0, channels);
+    ncplane_perimeter_rounded(cur->plane, 0, channels, 0);
+
+    cur->y = 1;
+    cur->maxy = max;
+    return 0;
+}
+
+static void destroy_cursor(cursor_t *cur) {
+    ncplane_destroy(cur->plane);
+    cur->plane = NULL;
+}
+
+static void move_cursor(cursor_t *cur, int y) {
+    cur->y += y;
+    if (cur->y < 1) {
+        cur->y = cur->maxy;
+    }
+    if (cur->y > cur->maxy) {
+        cur->y = 1;
+    }
+    ncplane_move_yx(cur->plane, cur->y, 1);
+}
+
+void render_courselist(struct ncplane *pane, cJSON *json) {
+    int y = 1;
+    int printName = (ncplane_dim_x(pane) > 20) ? 1 : 0;
+    cJSON *element = NULL;
+    cJSON_ArrayForEach(element, json) {
+        cJSON *course_code = cJSON_GetObjectItemCaseSensitive(element, "courseCode");
+        cJSON *course_name = cJSON_GetObjectItemCaseSensitive(element, "courseName");
+        if (cJSON_IsString(course_code) && (course_code->valuestring != NULL) && cJSON_IsString(course_name) && (course_name->valuestring != NULL)) {
+            ncplane_putstr_yx(pane, y, 2, course_code->valuestring);
+            if (printName) {
+                ncplane_putstr_yx(pane, y, strlen(course_code->valuestring) + 2, " - ");
+                ncplane_putstr_yx(pane, y, strlen(course_code->valuestring) + 5, course_name->valuestring);
+            }
+            y++;
+        }
+    }
+}
+
+void render_lecturelist(struct ncplane *pane, cJSON *json, const char *course_url) {
+    int y = 1;
+    cJSON *course = NULL;
+    cJSON_ArrayForEach(course, json) {
+        cJSON *url = cJSON_GetObjectItemCaseSensitive(course, "url");
+        if (cJSON_IsString(url) && (url->valuestring != NULL) && strcmp(url->valuestring, course_url) == 0) {
+            cJSON *lectureAmt = cJSON_GetObjectItemCaseSensitive(course, "lessonCount");
+            if (cJSON_IsNumber(lectureAmt)) {
+                for (int i = 1; i <= lectureAmt->valueint; i++) {
+                    char lectureName[50];
+                    snprintf(lectureName, sizeof(lectureName), "Lecture %d", i);
+                    ncplane_putstr_yx(pane, y, 2, lectureName);
+                    y++;
+                }
+            }
+        }
+    }
+}
+
+static int layout_panes(struct notcurses *nc, panes_t *panes, cJSON *json) {
     struct ncplane *std = notcurses_stdplane(nc);
     unsigned rows, cols;
     ncplane_dim_yx(std, &rows, &cols);
@@ -59,15 +143,21 @@ static int layout_panes(struct notcurses *nc, panes_t *panes) {
         return -1;
     }
 
-    ncplane_putstr_yx(panes->parent,  1, 2, "parent");
-    ncplane_putstr_yx(panes->current, 1, 2, "current");
-    ncplane_putstr_yx(panes->preview, 1, 2, "preview");
-    ncplane_putstr_yx(panes->preview, 3, 2, "Press 'q' or ESC to exit.");
+    render_courselist(panes->current, json);
+    render_courselist(panes->parent, json);
+    render_lecturelist(panes->preview, json, "22ea00b5-4fc9-463c-b13b-91f17456e1b8");
 
     return 0;
 }
 
 int sigma360_tui(void) {
+    cJSON *json = get_json("./src/cmds/courses.json");
+    if (!json) {
+        fprintf(stderr, "[ERROR] Failed to load JSON data.\n");
+        return 1;
+    }
+    sort_cjson_array(json);
+
     struct notcurses_options opts = {0};
     opts.flags = NCOPTION_SUPPRESS_BANNERS;
 
@@ -77,7 +167,14 @@ int sigma360_tui(void) {
     }
 
     panes_t panes = {0};
-    if (layout_panes(nc, &panes) != 0) {
+    if (layout_panes(nc, &panes, json) != 0) {
+        notcurses_stop(nc);
+        return 1;
+    }
+    cursor_t cursor = {0};
+    int max = cJSON_GetArraySize(json);
+    if (create_cursor(panes.current, &cursor, max) != 0) {
+        destroy_panes(&panes);
         notcurses_stop(nc);
         return 1;
     }
@@ -96,7 +193,7 @@ int sigma360_tui(void) {
         }
         if (id == NCKEY_RESIZE) {
             destroy_panes(&panes);
-            if (layout_panes(nc, &panes) != 0) {
+            if (layout_panes(nc, &panes, json) != 0) {
                 break;
             }
             notcurses_render(nc);
@@ -105,9 +202,21 @@ int sigma360_tui(void) {
         if (id == 'q' || id == NCKEY_ESC) {
             break;
         }
+        if (id =='j' || id == NCKEY_DOWN) {
+            move_cursor(&cursor, 1);
+            notcurses_render(nc);
+            continue;
+        }
+        if (id =='k' || id == NCKEY_UP) {
+            move_cursor(&cursor, -1);
+            notcurses_render(nc);
+            continue;
+        }
     }
 
     destroy_panes(&panes);
+    destroy_cursor(&cursor);
     notcurses_stop(nc);
+    cJSON_Delete(json);
     return 0;
 }
