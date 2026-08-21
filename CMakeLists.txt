@@ -15,6 +15,7 @@ endif()
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
+find_package(cJSON REQUIRED)
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(NOTCURSES REQUIRED IMPORTED_TARGET notcurses-core)
 
@@ -25,7 +26,7 @@ add_executable(sigma360
 )
 
 target_include_directories(sigma360 PRIVATE src)
-target_link_libraries(sigma360 PRIVATE PkgConfig::NOTCURSES)
+target_link_libraries(sigma360 PRIVATE PkgConfig::NOTCURSES cjson)
 
 target_compile_options(sigma360 PRIVATE
     $<$<C_COMPILER_ID:GNU,Clang>:-Werror -Wall -Wextra -Wpedantic>

@@ -1,6 +1,7 @@
 #include "tui.h"
 
 #include <notcurses/notcurses.h>
+#include <cjson/cJSON.h>
 #include <unistd.h>
 
 typedef struct {
