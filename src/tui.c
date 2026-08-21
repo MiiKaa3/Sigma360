@@ -1,4 +1,5 @@
 #include "tui.h"
+#include "utilities.h"
 
 #include <notcurses/notcurses.h>
 #include <cjson/cJSON.h>
@@ -68,6 +69,21 @@ static int layout_panes(struct notcurses *nc, panes_t *panes) {
 }
 
 int sigma360_tui(void) {
+    cJSON *json = get_json("./src/cmds/courses.json");
+    if (!json) {
+        fprintf(stderr, "[ERROR] Failed to load JSON data.\n");
+        return 1;
+    }
+    char* str = cJSON_Print(json);
+    if (!str) {
+        fprintf(stderr, "[ERROR] Failed to print JSON data.\n");
+        cJSON_Delete(json);
+        return 1;
+    }
+    printf("%s\n", str);
+    free(str);
+    cJSON_Delete(json);
+
     struct notcurses_options opts = {0};
     opts.flags = NCOPTION_SUPPRESS_BANNERS;
 
