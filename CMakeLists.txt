@@ -28,4 +28,5 @@ target_include_directories(sigma360 PRIVATE src)
 target_compile_options(sigma360 PRIVATE
     $<$<C_COMPILER_ID:GNU,Clang>:-Wall -Wextra -Wpedantic>
     $<$<C_COMPILER_ID:MSVC>:/W4>
+    $<$<C_COMPILER_ID:GNU,Clang>:-std=gnu11>
 )

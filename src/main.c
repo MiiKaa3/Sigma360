@@ -15,6 +15,9 @@ int main(int argc, char **argv) {
             usage_msg();
         } else if (strcmp(argv[1], "--cli") == 0) {
             sigma360_cli();
+        } else if (strcmp(argv[1], "--tui") == 0) {
+            fprintf(stderr, "[ERROR] TUI mode is not implemented yet.\n");
+            return 1;
         } else {
             fprintf(stderr, "[ERROR] Unknown argument: %s\n", argv[1]);
             usage_msg();
@@ -39,4 +42,5 @@ void usage_msg() {
     printf("  --version   Show version information\n");
     printf("  --help      Show this help message\n");
     printf("  --cli       Enter CLI mode\n");
+    printf("  --tui       Enter TUI mode\n");
 }
