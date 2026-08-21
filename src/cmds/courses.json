@@ -1,0 +1,188 @@
+{
+    "STAT2003": {
+        "courseCode": "STAT2003",
+        "lessonCount": 50,
+        "url": "a522a99a-9fde-420f-8bd4-5df880125b28",
+        "courseName": "Mathematical Probability"
+    },
+    "COMP3710": {
+        "courseCode": "COMP3710",
+        "lessonCount": 76,
+        "url": "152b6ed4-16fd-45e0-a4af-65d7aa170f62",
+        "courseName": "Pattern Recognition & Analysis"
+    },
+    "BIOL1040": {
+        "courseCode": "BIOL1040",
+        "lessonCount": 77,
+        "url": "e9f0cb67-1fd0-4e04-9e06-b007043bbf77",
+        "courseName": "Cells to Organisms"
+    },
+    "COMP3400": {
+        "courseCode": "COMP3400",
+        "lessonCount": 12,
+        "url": "e517bc3a-7600-456f-a7fd-066809d3a4e8",
+        "courseName": "Functional & Logic Programming"
+    },
+    "MATH2301": {
+        "courseCode": "MATH2301",
+        "lessonCount": 37,
+        "url": "0182ee3d-a7e2-4f53-aaae-f767983098a0",
+        "courseName": "Linear & Abstract Algebra"
+    },
+    "COMP2048": {
+        "courseCode": "COMP2048",
+        "lessonCount": 26,
+        "url": "f9a6ddd4-e6b1-4ef9-af2a-856525d2e951",
+        "courseName": "Theory of Computing"
+    },
+    "COMP4703": {
+        "courseCode": "COMP4703",
+        "lessonCount": 12,
+        "url": "0515333e-7093-455d-a90b-53e67b66d329",
+        "courseName": "Natural Language Processing"
+    },
+    "MATH2400": {
+        "courseCode": "MATH2400",
+        "lessonCount": 36,
+        "url": "ffbb10ef-b920-48c9-bb1d-2e1468a26908",
+        "courseName": "Mathematical Analysis"
+    },
+    "CSSE2002": {
+        "courseCode": "CSSE2002",
+        "lessonCount": 14,
+        "url": "c45f00a0-4fbf-4070-bb8a-68edb3e4224b",
+        "courseName": "Programming in the Large"
+    },
+    "COMP3702": {
+        "courseCode": "COMP3702",
+        "lessonCount": 13,
+        "url": "26bc2352-3ac5-4746-b3f4-a59c4e1b4003",
+        "courseName": "Artificial Intelligence"
+    },
+    "MATH3403": {
+        "courseCode": "MATH3403",
+        "lessonCount": 37,
+        "url": "27cf04ae-98f5-4019-b3cf-399f91d516cd",
+        "courseName": "Partial Differential Equations"
+    },
+    "MATH1072": {
+        "courseCode": "MATH1072",
+        "lessonCount": 38,
+        "url": "c6ac1d72-3376-4d0c-becc-8c5a17f86fe1",
+        "courseName": "Adv. Multi. Calculus & ODEs"
+    },
+    "MATH2011": {
+        "courseCode": "MATH2011",
+        "lessonCount": 20,
+        "url": "994643bc-1a1e-4023-a00e-16ef95a8685f",
+        "courseName": "Analysis of PDEs"
+    },
+    "MATH3101": {
+        "courseCode": "MATH3101",
+        "lessonCount": 25,
+        "url": "74f4e390-ee4f-4117-b8bd-4dd94e0375e0",
+        "courseName": "Ord diff equat & dynamic syst"
+    },
+    "MATH2010": {
+        "courseCode": "MATH2010",
+        "lessonCount": 21,
+        "url": "2a490f24-5fbf-424d-8267-f255c8dc93a5",
+        "courseName": "Analysis of ODEs"
+    },
+    "COMP4702": {
+        "courseCode": "COMP4702",
+        "lessonCount": 14,
+        "url": "a5ed4aff-021d-4c00-8ebd-a4210cc9ce6f",
+        "courseName": "Machine Learning"
+    },
+    "SCIE1000": {
+        "courseCode": "SCIE1000",
+        "lessonCount": 96,
+        "url": "cc4bdc50-9de2-4efe-829c-4dbbb2f717ff",
+        "courseName": "Theory & Practice in Science"
+    },
+    "MATH3402": {
+        "courseCode": "MATH3402",
+        "lessonCount": 38,
+        "url": "027a7dc5-17df-4f8b-85cf-c3b2902adb31",
+        "courseName": "Functional Analysis"
+    },
+    "MATH4408": {
+        "courseCode": "MATH4408",
+        "lessonCount": 38,
+        "url": "be4c5064-2d39-42ee-af10-a0942a53fde3",
+        "courseName": "Measure Theory"
+    },
+    "MATH1061": {
+        "courseCode": "MATH1061",
+        "lessonCount": 25,
+        "url": "cf43ef83-1770-407d-ac59-1f2a7925acba",
+        "courseName": "Discrete Mathematics"
+    },
+    "MATH2302": {
+        "courseCode": "MATH2302",
+        "lessonCount": 25,
+        "url": "428fb015-ad89-4382-91fe-8482569b93fa",
+        "courseName": "Discrete Mathematics II"
+    },
+    "STAT3004": {
+        "courseCode": "STAT3004",
+        "lessonCount": 38,
+        "url": "faa364b6-a253-44fe-acac-1d1a438bf11a",
+        "courseName": "Prob Models & Stochastic Proc"
+    },
+    "MATH1071": {
+        "courseCode": "MATH1071",
+        "lessonCount": 55,
+        "url": "89e7f974-a871-4503-8b2d-836ed8652839",
+        "courseName": "Adv. Calc. & Linear Alg. I"
+    },
+    "CHEM1100": {
+        "courseCode": "CHEM1100",
+        "lessonCount": 103,
+        "url": "9094d7ce-5277-4016-b073-3fa14748b0f9",
+        "courseName": "Chemistry 1"
+    },
+    "MATH2001": {
+        "courseCode": "MATH2001",
+        "lessonCount": 38,
+        "url": "fb3a4c59-5ca8-4685-9ccb-b763e90239e6",
+        "courseName": "Calculus & Linear Algebra II"
+    },
+    "CSSE2010": {
+        "courseCode": "CSSE2010",
+        "lessonCount": 42,
+        "url": "613781d9-6dd3-40e5-b1da-e10413835ad0",
+        "courseName": "Intro to Computer Systems"
+    },
+    "MATH3401": {
+        "courseCode": "MATH3401",
+        "lessonCount": 41,
+        "url": "cd48dec5-70b4-479b-8413-0b5e64131f2f",
+        "courseName": "Complex Analysis"
+    },
+    "MATH3102": {
+        "courseCode": "MATH3102",
+        "lessonCount": 37,
+        "url": "c8d8f4da-e8ee-4d6f-883e-e20a6ebc9823",
+        "courseName": "Applied Mathematics"
+    },
+    "COMP3506": {
+        "courseCode": "COMP3506",
+        "lessonCount": 15,
+        "url": "fdc253db-c489-4935-87fc-b5e2290c2a95",
+        "courseName": "Algorithms and Data Structures"
+    },
+    "BIOL1020": {
+        "courseCode": "BIOL1020",
+        "lessonCount": 52,
+        "url": "f1f9afdf-3198-43c5-ab12-91b4af6999c1",
+        "courseName": "Genes, Cells & Evolution"
+    },
+    "CSSE1001": {
+        "courseCode": "CSSE1001",
+        "lessonCount": 13,
+        "url": "d0f76a25-117f-45ab-b723-fc176708217b",
+        "courseName": "Software Engineering"
+    }
+}
