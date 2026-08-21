@@ -39,6 +39,43 @@ static void destroy_panes(panes_t *panes) {
     panes->preview = NULL;
 }
 
+void render_courselist(struct ncplane *pane, cJSON *json) {
+    int y = 1;
+    int printName = (ncplane_dim_x(pane) > 20) ? 1 : 0;
+    cJSON *element = NULL;
+    cJSON_ArrayForEach(element, json) {
+        cJSON *course_code = cJSON_GetObjectItemCaseSensitive(element, "courseCode");
+        cJSON *course_name = cJSON_GetObjectItemCaseSensitive(element, "courseName");
+        if (cJSON_IsString(course_code) && (course_code->valuestring != NULL) && cJSON_IsString(course_name) && (course_name->valuestring != NULL)) {
+            ncplane_putstr_yx(pane, y, 2, course_code->valuestring);
+            if (printName) {
+                ncplane_putstr_yx(pane, y, strlen(course_code->valuestring) + 2, " - ");
+                ncplane_putstr_yx(pane, y, strlen(course_code->valuestring) + 5, course_name->valuestring);
+            }
+            y++;
+        }
+    }
+}
+
+void render_lecturelist(struct ncplane *pane, cJSON *json, const char *course_url) {
+    int y = 1;
+    cJSON *course = NULL;
+    cJSON_ArrayForEach(course, json) {
+        cJSON *url = cJSON_GetObjectItemCaseSensitive(course, "url");
+        if (cJSON_IsString(url) && (url->valuestring != NULL) && strcmp(url->valuestring, course_url) == 0) {
+            cJSON *lectureAmt = cJSON_GetObjectItemCaseSensitive(course, "lessonCount");
+            if (cJSON_IsNumber(lectureAmt)) {
+                for (int i = 1; i <= lectureAmt->valueint; i++) {
+                    char lectureName[50];
+                    snprintf(lectureName, sizeof(lectureName), "Lecture %d", i);
+                    ncplane_putstr_yx(pane, y, 2, lectureName);
+                    y++;
+                }
+            }
+        }
+    }
+}
+
 static int layout_panes(struct notcurses *nc, panes_t *panes, cJSON *json) {
     struct ncplane *std = notcurses_stdplane(nc);
     unsigned rows, cols;
@@ -60,22 +97,9 @@ static int layout_panes(struct notcurses *nc, panes_t *panes, cJSON *json) {
         return -1;
     }
 
-    cJSON *element = NULL;
-    int y = 1;
-    cJSON_ArrayForEach(element, json) {
-        cJSON *course_code = cJSON_GetObjectItemCaseSensitive(element, "courseCode");
-        cJSON *course_name = cJSON_GetObjectItemCaseSensitive(element, "courseName");
-        if (cJSON_IsString(course_code) && (course_code->valuestring != NULL) && cJSON_IsString(course_name) && (course_name->valuestring != NULL)) {
-            ncplane_putstr_yx(panes->current, y, 2, course_code->valuestring);
-            ncplane_putstr_yx(panes->current, y, strlen(course_code->valuestring) + 2, " - ");
-            ncplane_putstr_yx(panes->current, y, strlen(course_code->valuestring) + 5, course_name->valuestring);
-            y++;
-        }
-    }
-
-    ncplane_putstr_yx(panes->parent,  1, 2, "parent");
-    ncplane_putstr_yx(panes->preview, 1, 2, "preview");
-    ncplane_putstr_yx(panes->preview, 3, 2, "Press 'q' or ESC to exit.");
+    render_courselist(panes->current, json);
+    render_courselist(panes->parent, json);
+    render_lecturelist(panes->preview, json, "22ea00b5-4fc9-463c-b13b-91f17456e1b8");
 
     return 0;
 }
