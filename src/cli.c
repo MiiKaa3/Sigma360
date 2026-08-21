@@ -5,16 +5,18 @@
 #include <string.h>
 #include <unistd.h>
 #include <time.h>
+#include <locale.h>
+#include <langinfo.h>
 
 void sigma360_welcome_msg();
 void sigma360_prompt();
-void set_terminal_colors();
-const char *C_RESET, *C_RED, *C_GREEN, *C_BLUE;
+void set_terminal_props();
+const char *C_RESET, *C_RED, *C_GREEN, *C_BLUE, *D_BAR, *D_EMPTY, *U_HIDE, *U_SHOW;
 void sigma360_watch();
 
 void sigma360_cli() {
     sigma360_welcome_msg();
-    set_terminal_colors();
+    set_terminal_props();
     char input[256];
 
     while (1) {
@@ -31,12 +33,12 @@ void sigma360_cli() {
             break;
         } else if (strcmp(input, "help") == 0) {
             printf("Available commands:\n");
-            printf("  help - Show this help message\n");
-            printf("  exit - Exit the CLI\n");
-            printf("  clear - Clear the terminal screen\n");
-            printf("  pwd  - Print the current working directory\n");
-            printf("  ls   - List files in the current directory\n");
-            printf("  cd   - Change the current directory\n");
+            printf("%s  help%s  - Show this help message\n", C_BLUE, C_RESET);
+            printf("%s  exit%s  - Exit the CLI\n", C_BLUE, C_RESET);
+            printf("%s  clear%s - Clear the terminal screen\n", C_BLUE, C_RESET);
+            printf("%s  pwd%s   - Print the current working directory\n", C_BLUE, C_RESET);
+            printf("%s  ls%s    - List files in the current directory\n", C_BLUE, C_RESET);
+            printf("%s  cd%s    - Change the current directory\n", C_BLUE, C_RESET);
         } else if (strcmp(input, "pwd") == 0) {
             printf("/\n");
             printf("%sNOT IMPLEMENTED%s\n", C_RED, C_RESET);
@@ -75,14 +77,11 @@ void sigma360_prompt(){
     printf("%sSigma360> %s", C_GREEN, C_RESET);
 }
 
-void set_terminal_colors() {
+void set_terminal_props() {
     int color_supported = 1;
+    int utf8_supported = 1;
 
     if (getenv("NO_COLOR") != NULL) {
-        color_supported = 0;
-    }
-
-    if (color_supported && !isatty(STDOUT_FILENO)) {
         color_supported = 0;
     }
 
@@ -92,6 +91,18 @@ void set_terminal_colors() {
             color_supported = 0;
         }
     }
+
+    if (color_supported && !isatty(STDOUT_FILENO)) {
+        color_supported = 0;
+        utf8_supported = 0;
+    }
+
+    setlocale(LC_CTYPE, "");
+    const char *codeset = nl_langinfo(CODESET);
+    if (codeset == NULL || strstr(codeset, "UTF-8") == NULL) {
+        utf8_supported = 0;
+    }
+
 
     if (color_supported) {
         C_RESET = "\033[0m";
@@ -104,10 +115,21 @@ void set_terminal_colors() {
         C_GREEN = "";
         C_BLUE = "";
     }
+
+    if (utf8_supported) {
+        D_BAR = "█";
+        D_EMPTY = "░";
+    } else {
+        D_BAR = "#";
+        D_EMPTY = " ";
+    }
+
+    U_HIDE = "\033[?25l";
+    U_SHOW = "\033[?25h";
 }
 
 void sigma360_watch() {
-    printf("Downloading video...\n");
+    printf("%sDownloading video...\n", U_HIDE);
 
     srand(time(NULL));
     for (int pct = 0; pct <= 100; pct += 10) {
@@ -115,7 +137,7 @@ void sigma360_watch() {
 
         printf("\r[");
         for (int i = 0; i < 30; i++) {
-            putchar(i < filled ? '#' : ' ');
+            fputs(i < filled ? D_BAR : D_EMPTY, stdout);
         }
         printf("] %3d%%", pct);
         fflush(stdout);  // needed since there's no newline yet
@@ -131,4 +153,5 @@ void sigma360_watch() {
     printf("Download complete!\n");
     printf("Watching...\n");
     usleep(2000000);
+    printf("%s", U_SHOW);
 }
