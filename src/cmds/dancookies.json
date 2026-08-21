@@ -1,0 +1,74 @@
+[
+    {
+        "domain": "echo360.net.au",
+        "hostOnly": true,
+        "httpOnly": true,
+        "name": "PLAY_SESSION",
+        "path": "/",
+        "sameSite": "no_restriction",
+        "secure": true,
+        "session": true,
+        "storeId": null,
+        "value": "ef1cf3459a4751b3839dc298e41ba5d83e0f3721-inIframe=false&ltiContextId=d91b5017bf7b43c5a44d02dbfec04caa&returnUrl=https%3A%2F%2Flearn.uq.edu.au%2Fwebapps%2Fblackboard%2Fexecute%2Fblti%2FlaunchReturn%3Fcourse_id%3D_207872_1%26content_id%3D_13190196_1%26toGC%3Dfalse%26nonce%3D5e57ceb09b7a4fd88c1df772f07faf64%26launch_id%3D767cd816-8683-4689-b980-000a5db8ac9d%26link_id%3D_13190196_1%26launch_time%3D1787321138432&lmsResourceId=_13190196_1&ltiRequestRoute=Other&isHomeworkContentRequest=false&role=student&LTI=true&institution=60d4291f-70de-44d8-a332-d7c51983738d&d2LEmbed=false&isSecureLink=false&courseSectionSourcedId=&isContentItemMessageRequest=false&externalLtiHierarchyId=&isAuthEmbedSupported=false&lmsName=Blackboard&roles=Student&productFamilyCode=Blackboard&csrfToken=85f7f58b3e8a6a2c106d81ac9778037011c8f85b-1787321138749-8b8c2886680d283a4bdeb7f2&contextTitle=%5BCOMP4703%5D+Natural+Language+Processing+%28St+Lucia%29.+Semester+2%2C+2026&isEmbedContentRequest=false&lmsProfileId=3dfc48d7-60ed-447d-9ee0-37d0b08ef505&contentItemMessageData=&sessionExpiresAt=2026-08-21T18%3A05%3A38.722Z&lmsPluginVersion=&contextLabel=COMP4703_7660_62310&user=0166278b-7f37-4d8a-8672-a0c464c95943&msTokenState=&sessionCode="
+    },
+    {
+        "domain": ".echo360.net.au",
+        "hostOnly": false,
+        "httpOnly": true,
+        "name": "CloudFront-Key-Pair-Id",
+        "path": "/",
+        "sameSite": "no_restriction",
+        "secure": true,
+        "session": true,
+        "storeId": null,
+        "value": "APKAIPMYRDQXV3PXG2XA"
+    },
+    {
+        "domain": ".echo360.net.au",
+        "hostOnly": false,
+        "httpOnly": true,
+        "name": "CloudFront-Policy",
+        "path": "/",
+        "sameSite": "no_restriction",
+        "secure": true,
+        "session": true,
+        "storeId": null,
+        "value": "eyJTdGF0ZW1lbnQiOiBbeyJSZXNvdXJjZSI6Imh0dHBzOi8vKi5lY2hvMzYwLm5ldC5hdS8qNjBkNDI5MWYtNzBkZS00NGQ4LWEzMzItZDdjNTE5ODM3MzhkLyoiLCJDb25kaXRpb24iOnsiRGF0ZUxlc3NUaGFuIjp7IkFXUzpFcG9jaFRpbWUiOjE3ODczMzIxMzZ9fX1dfQ__"
+    },
+    {
+        "domain": ".echo360.net.au",
+        "hostOnly": false,
+        "httpOnly": true,
+        "name": "CloudFront-Signature",
+        "path": "/",
+        "sameSite": "no_restriction",
+        "secure": true,
+        "session": true,
+        "storeId": null,
+        "value": "oOiQ~JMECzFIihPcGXsYu3kJAB-NbTnf8xn6mIjCkayFGu7DncbQgKZRdKAHrhwR6ce6N4DaXlqtocaKlEpq77CNjsBblS3k-mw0OrTC3I5YF3RAJVe3Rk8-QIw5DszfHVGV-uGcRL7LlqfO32zAuoskIxAFOaG2zQtDcprjg-ryL6io9~MmGrT0CKQQRI3XXmT2QCO1F36yJaL0I0pNVKVks3xv64Xa~24A88t1bimpqfkKS4jH8Twgpc6ffr-IOCWWy~-zapQRjzULOZE6Pmcrj1ss9lV9g2rETob6ARYIWFomO64Yq~zFdQo4QVLlgQ9V2~lCXY7VNdH7bTW1sw__"
+    },
+    {
+        "domain": ".echo360.net.au",
+        "hostOnly": false,
+        "httpOnly": true,
+        "name": "CloudFront-Tracking2",
+        "path": "/",
+        "sameSite": "no_restriction",
+        "secure": true,
+        "session": true,
+        "storeId": null,
+        "value": "MTc4NzMyODUzNjY3N+KQn+KQn+KQn+KQnzYwZDQyOTFmLTcwZGUtNDRkOC1hMzMyLWQ3YzUxOTgzNzM4ZOKQn+KQn+KQn+KQny5lY2hvMzYwLm5ldC5hdeKQn+KQny8"
+    },
+    {
+        "domain": ".echo360.net.au",
+        "hostOnly": false,
+        "httpOnly": true,
+        "name": "ECHO_JWT",
+        "path": "/",
+        "sameSite": "no_restriction",
+        "secure": true,
+        "session": true,
+        "storeId": null,
+        "value": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJFY2hvMzYwLkF1dGhuIiwic3ViIjoiczQ3NDIyODYiLCJleHAiOjE3ODczNjc5MzgsImlhdCI6MTc4NzMyMTEzOCwianRpIjoiMTBmMjY5YjgtYjEyNC00NzVkLWE3NjItYmNkMzgwMDI1MDYzIiwiY29udGVudCI6eyJzZXNzaW9uSWQiOiI4MjNjMTExYy05ZmRmLTQ5ZWItYmIxNC04ZWNhZDBiNzhkYWQiLCJ1c2VySWQiOiIwMTY2Mjc4Yi03ZjM3LTRkOGEtODY3Mi1hMGM0NjRjOTU5NDMiLCJpbnN0aXR1dGlvbklkIjoiNjBkNDI5MWYtNzBkZS00NGQ4LWEzMzItZDdjNTE5ODM3MzhkIiwiZG9tYWluIjoiZWNobzM2MC5uZXQuYXUiLCJrZXlJZCI6Ijk2Y2U2OGNiLTU4MmMtNDgxNS1hNGU2LTIyMGQxZGUzZTQ0MyIsInNzb0lkIjoiczQ3NDIyODYiLCJycXJvbGUiOiJzdHVkZW50In19.pKYs5IRNOv2HSil8gFU8tPcRDSYfdbnqxVa9X7sykuM"
+    }
+]

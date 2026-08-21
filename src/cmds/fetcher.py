@@ -9,24 +9,26 @@ class Fetcher():
     def __init__(self, course_code: str, lecture_number: str):
         self.course_code = course_code
         self.lecture_number = lecture_number
-        self.session = self.load_session("cookies.json")
+        self.session = self.load_session("cook.json")
 
     def load(self):
         self.check_auth()
 
         data = self.session.get("https://echo360.net.au/user/enrollments").json()
-        loading_data = {}
+        loading_data = [] 
         sections = data["data"][0]["userSections"]
         for d in sections:
             cc = d["courseCode"]
-            loading_data[cc] = {"courseCode": cc,
-                                "lessonCount": d["lessonCount"],
-                                "url": d["sectionId"],
+            loading_data.append(
+                                {"courseCode": cc,
                                 "courseName": d["courseName"],
+                                "url": d["sectionId"],
+                                "lessonCount": d["lessonCount"],
                                 "termId": d["termId"],
                                 "yearSem": getYearSem(data["data"][0]["termsById"][d["termId"]]["startDate"])
                                 }
-       
+                                )
+                             
         with open("courses.json", "w") as f:
             json.dump(loading_data, f, indent=4)
         
@@ -110,17 +112,22 @@ class Fetcher():
 def getYearSem(date: str) -> str:
         y, m, d = date.split("-")
         
-        if m in ["11", "12", "01", "02", "03"]:
+        if m in ["12", "01", "02", "03"]:
             sem = "1"
+        elif m == "11":
+            sem = "3"
         else:
             sem = "2"
 
-        if m in ["11", "12"]:
+        if m == "12":
             year = str(int(y) + 1)
         else:
             year = y
-
-        return year + " Semester " + sem
+        
+        if sem == "3":
+            return year + " Summer Semester"
+        else:
+            return year + " Semester " + sem
     
 def print_tree(obj, indent=0):
     prefix = "    " * indent
