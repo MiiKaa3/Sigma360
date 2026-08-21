@@ -18,18 +18,36 @@ int findcwd(char** buf)
 
 int read_file(char* dir, char** file)
 {
-    FILE* json = fopen(dir);
+    FILE* json = fopen(dir, "r");
+    if (json == NULL) {
+        fprintf(stderr, 
+                "Failed opening .json. Check directory or existence.\n");
+        return 10;
+    }
     *file = malloc(sizeof(char));
     int size = 0;
 
-    char c;
-    for ((c = fgetc(json)) != EOF) {
+    int c;
+    while ((c = fgetc(json)) != EOF) {
         *file = realloc(*file, ++size * sizeof(char));
         (*file)[size - 1] = c;
     }
+    *file = realloc(*file, ++size * sizeof(char));
+    (*file)[size - 1] = '\0';
+    fclose(json);
+    return 0;
 }
 
 int build_tree(char* root, char** courses)
 {
+    /* char* file; */
+    /* read_file("cmds/courses.json", &file); */
 
+    /* cJSON* json = cJSON_parse(file); */
+    /* if (json == NULL) { */
+    /*     fprintf(stderr, "Bad .json read.\n"); */
+    /*     return 11; */
+    /* } */
+    return 0;
+    
 }
