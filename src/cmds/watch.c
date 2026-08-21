@@ -23,6 +23,8 @@ typedef struct {
 #define GOOD      0
 #define BAD_USAGE 1
 #define BAD_TIME  2
+#define BAD_FETCH 3
+#define BAD_PLAY  4
 
 /*  STRING CONSTANTS  */
 
@@ -47,6 +49,9 @@ const char* const help =
 
 int parse(char** argv, Parameters* params);
 bool check_time_arg(char* time);
+void buildArgs(char* option, char* var);
+int play_lecture(Parameters* params);
+char* buildArgs(char* option, char* var);
 
 /*  FUNCTIONALITY  */
 
@@ -61,6 +66,9 @@ int main(int argc, char** argv)
     }
     if ((exitCode = fetch_lecture(&params))) {
         return exitCode;
+    }
+    if ((exitCode = play_lecture(&params))) {
+
     }
 
     return 0;
@@ -78,7 +86,7 @@ int parse(char** argv, Parameters* params)
             params->options.splitScreen = true;
         } else if (!strcmp(argv[0], "-t") && argv[1]) {
             if (!check_time_arg(argv[1])) {
-                printf(timeUsage);
+                fprintf(stderr, timeUsage);
                 return BAD_TIME;
             }
             params->options.startTime = argv[1];
@@ -88,13 +96,13 @@ int parse(char** argv, Parameters* params)
             argv++;
         }
         } else {
-            printf(usage);
+            fprintf(stderr, usage);
             return BAD_USAGE;
         }
         argv++;
     }
     if (!params->lecture) {
-        printf(usage);
+        fprintf(stderr, usage);
         return BAD_USAGE;
     }
     return GOOD;
@@ -125,13 +133,68 @@ bool check_time_arg(char* time)
 
 int fetch_lecture(Parameters* params)
 {
+    int exitCode = GOOD;
     char* buf;
     findcwd(&buf);
     char* temp = "fetcher.py";
-    strcat
+    strcat(buf, temp);
 
     if (!fork()) {
-        execlp("python3", 
-                "python3", temp, params->course, params->lecture, NULL);
+        execlp("python3", "python3", 
+                "--watch", buf, params->course, params->lecture, NULL);
         // If exec fails
+        return BAD_FETCH;
+    }
+    wait(&exitCode);
+    exitCode = WEXITSTATUS(exitCode);
+    return exitCode;
+}
+
+int play_lecture(Parameters* params)
+{
+    char* tmpPath = strdup(params->lecture);
+    tmpPath = realloc(tmpPath, (strlen(tmpPath)+strlen("%s")+1) * sizeof(char));
+    strcat(tmpPath, "%s");
+
+    char* v2Path = buildArgs(tmpPath, "v2.mp4");
+    char* aud = buildArgs(tmpPath, "audio.mp3");
+    free(tmpPath);
+
+    char* v1 = buildArgs(tmpPath, "v1.mp4");
+    char* time = buildArgs("--start=%s", params->options.startTime);
+    char* audio = buildArgs("--audio-file=%s", aud);
+    char* v2 = buildArgs("--external-file=%s", v2Path);
+    free(v2Path);
+    free(aud);
+
+    if (!fork()) {
+        if (params->options.splitScreen && params->options.startTime) {
+            execlp("mpv", "mpv", v1, audio, time, v2,
+                    "--lavfi-complex=\"[vid1][vid2]hstack[vo]\"", NULL);
+        } else if (params->options.splitScreen) {
+            execlp("mpv", "mpv", v1, audio, time, v2, 
+                    "--lavfi-complex=\"[vid1][vid2]hstack[vo]\"", NULL);
+        } else if (params->options.startTime) {
+            execlp("mpv", "mpv", v1, audio, time, NULL);
+        } else {
+            execlp("mpv", "mpv", v1, audio, time, NULL);
+        }
+        return BAD_PLAY;
+    }
+    free(time);
+    free(audio);
+    free(v1);
+    free(v2);
+    wait(NULL);
+    return GOOD;
+}
+
+char* buildArgs(char* option, char* var) 
+{
+    int len = snprintf(NULL, 0, "--start-time=%s",
+            params->options.startTime);
+    char* str = malloc(++len * sizeof(char));
+    int len = snprintf(str, len, "--start-time=%s",
+            params->options.startTime);
+    return str;
 }
