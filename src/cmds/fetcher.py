@@ -3,6 +3,7 @@ import json
 import time as t
 import requests
 from bs4 import BeautifulSoup
+import subprocess
 
 class Fetcher():
 
@@ -34,6 +35,7 @@ class Fetcher():
         
         return 0
         
+<<<<<<< HEAD
 
 
 
@@ -42,6 +44,23 @@ class Fetcher():
         r = self.session.get("https://echo360.net.au/user/enrollments")
         data = r.json()
         print_tree(data)
+=======
+    def watch(self, url, path):
+        self.check_auth()
+
+        download_lesson(url, path)
+        
+    def download_lesson(self, manifest_url, output_path):
+        cookies = cookie_header(self.session)
+        cmd = [
+                "ffmpeg",
+                "-headers", f"Cookie: {cookies}\r\n",
+                "-i", manifest_url,
+                "-c", "copy",
+                output_path,
+        ]
+        subprocess.run(cmd, check=True)        
+>>>>>>> d72f505 (updating to latest ver)
 
     def load_session(self, cookie_file:str) -> requests.Session:
         session = requests.Session()
@@ -145,7 +164,24 @@ def print_tree(obj, indent=0):
     else:
         print(f"{prefix}{obj}")
 
+def cookie_header(session: requests.Session, domain_filter: str = "echo360.net.au", name_filter:str = "") -> str:
+    """Build a raw Cookie header string from a requests session."""
+    pairs = [
+        f"{c.name}={c.value}"
+        for c in session.cookies
+        if ((domain_filter in c.domain) or (name_filter in name))
+    ]
+    return "; ".join(pairs)
+
+
+
 if __name__ == "__main__":
     fetcher = Fetcher("STAT3004", "12")
-    fetcher.load()
-    
+    fetcher.watch("https://content.echo360.net.au/0000.60d4291f-70de-44d8-a332-d7c51983738d/7bee4707-6a80-4cd1-b2fe-b88519a4ff15/1/s2_av.m3u8?x-uid=0166278b-7f37-4d8a-8672-a0c464c95943&x-instid=60d4291f-70de-44d8-a332-d7c51983738d&x-lid=G_8d86e9f9-f41c-4168-91ac-5254f1578d0e_faa364b6-a253-44fe-acac-1d1a438bf11a_2026-07-27T12%3A00%3A00.000_2026-07-27T13%3A00%3A00.000&x-sid=faa364b6-a253-44fe-acac-1d1a438bf11a&x-mid=7bee4707-6a80-4cd1-b2fe-b88519a4ff15&x-act=videoView&x-src=desktop", "output.mp4")
+    #url = f"https://echo360.net.au/section/faa364b6-a253-44fe-acac-1d1a438bf11a/home"
+    #r = fetcher.session.get(url)
+
+    #print(r.status_code)
+    #print(r.url)
+    #print(r.headers.get("content-type"))
+    #print(r.text[:2000])
