@@ -22,7 +22,9 @@ class Fetcher():
             loading_data[cc] = {"courseCode": cc,
                                 "lessonCount": d["lessonCount"],
                                 "url": d["sectionId"],
-                                "courseName": d["courseName"]
+                                "courseName": d["courseName"],
+                                "termId": d["termId"],
+                                "yearSem": getYearSem(data["data"][0]["termsById"][d["termId"]]["startDate"])
                                 }
        
         with open("courses.json", "w") as f:
@@ -104,6 +106,21 @@ class Fetcher():
             return 68
         
         return 0
+
+def getYearSem(date: str) -> str:
+        y, m, d = date.split("-")
+        
+        if m in ["11", "12", "01", "02", "03"]:
+            sem = "1"
+        else:
+            sem = "2"
+
+        if m in ["11", "12"]:
+            year = str(int(y) + 1)
+        else:
+            year = y
+
+        return year + " Semester " + sem
     
 def print_tree(obj, indent=0):
     prefix = "    " * indent
