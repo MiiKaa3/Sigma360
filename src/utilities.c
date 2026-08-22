@@ -56,7 +56,7 @@ int build_tree(char** root)
     strcat(jDir, "/courses.json");
     read_file(jDir, &file);
     char template[] = "/tmp/sigma_XXXXXX";
-    *root = mkdtemp(template);
+    *root = strdup(mkdtemp(template));
 
     cJSON* json = cJSON_Parse(file);
     if (json == NULL) {

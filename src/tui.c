@@ -301,7 +301,6 @@ int sigma360_tui(void) {
                     expand_path(&dir);
                     char* lecture = buildLec("Lecture%d", (int)l->sel + 1);
                     dir = buildArgs(dir, lecture);
-                    fprintf(stderr, "%s\n", dir);
                     sigma360_tui_watch(dir);
                     free(dir);
                 }

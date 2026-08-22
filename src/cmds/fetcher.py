@@ -33,7 +33,7 @@ class Fetcher():
                                 }
                                 )
                              
-        with open(outfile + "courses.json", "w") as f:
+        with open(outfile, "w") as f:
             json.dump(loading_data, f, indent=4)
         
         return 0
