@@ -1,5 +1,5 @@
 #include "cli.h"
-
+#include "utilities.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -15,8 +15,14 @@ void sigma360_watch(void);
 const char *C_RESET, *C_RED, *C_GREEN, *C_BLUE, *D_BAR, *D_EMPTY, *U_HIDE, *U_SHOW;
 
 void sigma360_cli(void) {
+    char* root;
+    if (build_tree(&root)) {
+        fprintf(stderr, "Bad temp tree construction");
+        exit(-1);
+    }
     sigma360_welcome_msg();
     set_terminal_props();
+
     char input[256];
 
     while (1) {
