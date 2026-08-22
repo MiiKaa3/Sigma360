@@ -25,7 +25,7 @@ cmake --build build
 
 ## Usage
 ```
-$ ./sigma360 --help
+$ ./build/sigma360 --help
 Usage: sigma360 (arguments)
 Arguments:
   --version   Show version information
