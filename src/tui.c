@@ -203,17 +203,18 @@ static void draw_all(panes_t *panes, nav_t *nav) {
 static int sigma360_tui_watch(char* dir);
 
 int sigma360_tui(void) {
-    char* root;
-    if (build_tree(&root)) {
-        fprintf(stderr, "[ERROR] Failed to construct tmp tree.\n");
-        return 1;
-    }
     cJSON *json = get_courses_json("./courses.json");
     if (!json) {
         fprintf(stderr, "[ERROR] Failed to load JSON data.\n");
         return 1;
     }
     sort_cjson_array(json);
+
+    char* root;
+    if (build_tree(&root)) {
+        fprintf(stderr, "[ERROR] Failed to construct tmp tree.\n");
+        return 1;
+    }
 
     nav_t nav;
     if (nav_init(&nav, json) != 0) {
@@ -300,6 +301,7 @@ int sigma360_tui(void) {
                     expand_path(&dir);
                     char* lecture = buildLec("Lecture%d", (int)l->sel + 1);
                     dir = buildArgs(dir, lecture);
+                    fprintf(stderr, "%s\n", dir);
                     sigma360_tui_watch(dir);
                     free(dir);
                 }
