@@ -20,9 +20,7 @@ int main(int argc, char **argv) {
             return 1;
         }
     } else {
-        fprintf(stderr, "[ERROR] No arguments provided.\n");
-        usage_msg();
-        return 1;
+        sigma360_tui();
     }
 
     return 0;
