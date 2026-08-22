@@ -15,7 +15,7 @@ class Fetcher():
         if not self.check_auth():
             print("Failed authentication")
             return 1
-
+        
         data = self.session.get("https://echo360.net.au/user/enrollments").json()
         loading_data = [] 
         sections = data["data"][0]["userSections"]
@@ -39,10 +39,14 @@ class Fetcher():
         return 0
     
     # Functionality that retrieves the video files for a certain lecture
-    def watch(self, section_id: str, lecture_number: str, output_path:str):
+    def watch(self, output_path:str):
         if not self.check_auth():
             print("Failed authentication")
             return 1
+        
+        section_id, lecture_number = output_path.split("/")[-2:]
+        lecture_number = lecture_number[7:]
+
 
         lessons = self._get_syllabus(section_id)
         target = lessons[int(lecture_number) - 1]
@@ -54,13 +58,13 @@ class Fetcher():
         path = f"https://content.echo360.net.au/0000.{institute}/{media_id}/1/"
 
         audio_url = path + "s0q1.mp4"
-        self.download_mp4(audio_url, output_path + "audio.mp4")
+        self.download_mp4(audio_url, output_path + "/audio.mp4")
 
         screen1_url = path + "s1q1.mp4"
-        self.download_mp4(screen1_url, output_path + "s1.mp4")
+        self.download_mp4(screen1_url, output_path + "/v1.mp4")
 
         screen2_url = path + "s2q1.mp4"
-        has_screen2 = self.download_mp4(screen2_url, output_path + "s2.mp4")
+        has_screen2 = self.download_mp4(screen2_url, output_path + "/v2.mp4")
         if not has_screen2:
             print(f"Lecture {lecture_number}: single-screen recording, no s2.")
 
@@ -204,8 +208,7 @@ def main():
 
     group.add_argument(
         "--watch",
-        nargs=3,
-        metavar=("SECTION_ID", "LECTURE_NUMBER", "PATH"),
+        metavar="PATH",
         help="Download a specific lecture",
     )
 
@@ -224,10 +227,10 @@ def main():
         fetcher.load(outfile)
 
     elif args.watch:
-        section_id, lecture_number, path = args.watch
+        path = args.watch
         fetcher = Fetcher()
-        print(f"Fetcher will watch {section_id}'s lecture {lecture_number} and save to {path}") 
-        fetcher.watch(section_id, lecture_number, path)
+        print(f"Fetcher will fetch this lecture: {path}") 
+        fetcher.watch(path)
 
     elif args.thumbnails:
         outpath = args.thumbnails
