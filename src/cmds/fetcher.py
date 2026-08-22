@@ -98,7 +98,7 @@ class Fetcher():
                 for media in lesson["lesson"]["medias"]:
                     media_id = media["id"]
                     thumb_url = f"https://thumbnails.echo360.net.au/0000.{institute}/{media_id}/1/poster1.jpg"
-                    code = course["courseCode"]
+                    code = course["url"]
                     path = f"{outpath}/{code}/Lecture{i}/t.jpg"
                     try:
                         self.download_mp4(thumb_url, path)
