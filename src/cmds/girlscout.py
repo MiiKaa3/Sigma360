@@ -1,4 +1,4 @@
-from playwright.sync_api import sync_playwright
+from playwright.sync_api import sync_playwright, TimeoutError
 import os
 import requests
 import json
@@ -13,9 +13,12 @@ def get_echo360_cookies(cookie_file: str = "cookies.json"):
 
         page.goto("https://echo360.net.au")
 
-        print("Log in (including any MFA prompt) in the browser window.")
-        print("Once you land on the Echo360 course list, press Enter here...")
-        input()
+        try:
+            page.wait_for_url("https://echo360.net.au/content", timeout=3_000_000)
+        except TimeoutError:
+            print("Timed out waiting for login — closing browser...")
+            browser.close()
+            return 7
 
         cookies = context.cookies()
         with open(cookie_file, "w") as f:
@@ -23,6 +26,8 @@ def get_echo360_cookies(cookie_file: str = "cookies.json"):
 
         browser.close()
         print(f"Saved {len(cookies)} cookies to {cookie_file}")
+
+    return 0
 
 def check_auth(cookie_file: str) -> bool:
     now = t.time()
