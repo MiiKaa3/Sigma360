@@ -6,8 +6,9 @@ Echo360 but as a terminal client/user interface
 ## Requirements
 - cJSON.h
 - notcurses
+- ffmpeg
 
-`sudo pacman -S cjson notcurses`
+`sudo pacman -S cjson notcurses ffmpeg`
 
 ## Installation
 ```

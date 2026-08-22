@@ -5,6 +5,7 @@
 #include <ctype.h>
 #include <unistd.h>
 #include <sys/wait.h>
+#include <libavformat/avformat.h>
 #include "../utilities.h"
 
 /*  STRUCTS  */
@@ -53,6 +54,8 @@ int parse(char** argv, Parameters* params);
 bool check_time_arg(char* time);
 int play_lecture(Parameters* params);
 int fetch_lecture(Parameters* params);
+double get_mp4_dur(char* path);
+bool check_dur_v_timestamp(double duration, char* timestamp);
 
 /*  FUNCTIONALITY  */
 
@@ -65,9 +68,10 @@ int main(int argc, char** argv)
     if ((exitCode = parse(argv, &params))) {
         return exitCode;
     }
-    /* if ((exitCode = fetch_lecture(&params))) { */
-    /*     return exitCode; */
-    /* } */
+    if (is_dir_empty(params.lecture) && 
+            (exitCode = fetch_lecture(&params))) {
+        return exitCode;
+    }
     if ((exitCode = play_lecture(&params))) {
         return exitCode;
     }
@@ -167,6 +171,12 @@ int play_lecture(Parameters* params)
     free(v2Path);
     free(aud);
 
+    double dur = get_mp4_dur(v1);
+    if (!check_dur_v_timestamp(dur, params->options.startTime)) {
+        fprintf(stderr, "Timestamp given exceeds lecture duration.\n");
+        return -1;
+    }
+
     if (!fork()) {
         if (params->options.splitScreen) {
             execlp("mpv", "mpv", v1, audio, time, v2, 
@@ -184,4 +194,31 @@ int play_lecture(Parameters* params)
     free(v2);
     wait(NULL);
     return GOOD;
+}
+
+double get_mp4_dur(char* path) 
+{
+    char* cmd = "ffprobe -v error -show_entries format=duration "
+                "-of default=noprint_wrappers=1:nokey=1 %s";
+    cmd = buildArgs(cmd, path);
+    FILE* fp = popen(cmd, "r");
+    double duration;
+    fscanf(fp, "%lf", &duration);
+    pclose(fp);
+    printf("%f\n", duration);
+    return duration;
+}
+
+bool check_dur_v_timestamp(double duration, char* timestamp)
+{
+    double hrs = 10*(timestamp[0]-'0') + (timestamp[1]-'0');
+    double mins = 10*(timestamp[3]-'0') + (timestamp[4]-'0');
+    double secs = 10*(timestamp[6]-'0') + (timestamp[7]-'0');
+    double start = (hrs*3600) + (mins*60) + secs;
+    printf("%s\n", timestamp);
+    printf("%f\n", hrs);
+    if (start >= duration) {
+        return false;
+    }
+    return true;
 }

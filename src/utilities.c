@@ -1,9 +1,14 @@
 #include <stdlib.h>
 #include <unistd.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
+#include <dirent.h>
+#include <math.h>
+#include <ctype.h>
 #include <cjson/cJSON.h>
 #include <sys/stat.h>
+#include <sys/types.h>
 #include "utilities.h"
 
 int findcwd(char** buf)
@@ -41,19 +46,19 @@ int read_file(char* dir, char** file)
     return 0;
 }
 
-int build_tree(char* root, char** courses)
+int build_tree(char** root)
 {
     char* file;
     read_file("cmds/courses.json", &file);
     char template[] = "/tmp/sigma_XXXXXX";
-    root = mkdtemp(template);
+    *root = mkdtemp(template);
 
     cJSON* json = cJSON_Parse(file);
     if (json == NULL) {
         fprintf(stderr, "Bad .json read.\n");
         return 11;
     }
-    char* tmp = strdup(root);
+    char* tmp = strdup(*root);
     tmp = realloc(tmp, (strlen(tmp)+strlen("/%s")+1)*sizeof(char));
     strcat(tmp, "/%s");
 
@@ -180,4 +185,27 @@ void sort_cjson_array(cJSON *array) {
     }
 
     free(items);
+}
+
+bool is_dir_empty(char* dir)
+{
+    int n = 0;
+    struct dirent* d;
+    DIR* folder = opendir(dir);
+    // Need some better way of handling bad directory. Just assume its right
+    // for the minute
+    if (folder == NULL) {
+        fprintf(stderr, "Directory does not exist\n");
+        return true;
+    }
+    while ((d = readdir(folder)) != NULL) {
+        if (++n > 3) {
+            // We necessarily get . and .., anything else and the directory
+            // is non-empty, so return false;
+            closedir(folder);
+            return false;
+        }
+    }
+    closedir(folder);
+    return true;
 }
