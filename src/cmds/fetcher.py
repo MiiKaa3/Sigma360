@@ -155,7 +155,7 @@ class Fetcher():
         now = t.time()
         expiries = getattr(self.session, "cookie_expiries", {})
     
-        expired = {k:v for k,v in expiries.items() if v < now}
+        expired = {k:v for k,v in expiries.items() if v < now + 300}
         if expired:
             details = ", ".join(f"{k} (expired {int(now - v)}s ago)" for k, v in expired.items())
             print(f"Cookie(s) expired: {details}")
