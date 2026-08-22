@@ -81,7 +81,7 @@ def main():
         valid = check_auth("cookies.json")
     else:
         print("No cookies found")
-        valid = false
+        valid = False
 
     if not valid:
         print("Fetching fresh cookies...")

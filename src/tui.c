@@ -259,13 +259,19 @@ static int sigma360_tui_watch(char* dir, bool split, char* time);
 static int sigma360_tui_save(struct notcurses *nc, nav_t *nav, const char *root);
 
 int sigma360_tui(void) {
-    pid_t pid = fork();
+    char *script;
+    if (findcwd(&script) != 0) {
+        return -1;
+    }
+    strcat(script, "/src/cmds/girlscout.py");
+
+pid_t pid = fork();
     if (pid < 0) {
         exit(EXIT_FAILURE);
     }
     if (pid == 0) {
         // Child process
-        execlp("python3", "python3", "/src/cmds/girlscout.py", (char *)NULL);
+        execlp("python3", "python3", script, (char *)NULL);
         // execlp only returns on failure
         perror("execlp failed");
         exit(EXIT_FAILURE);
