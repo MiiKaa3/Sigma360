@@ -11,8 +11,8 @@ Echo360 but as a terminal client/user interface
 - python-playwright
 
 ```
-sudo pacman -S cjson notcurses ffmpeg python-requests python-playwright
-playwright install chromium
+$ sudo pacman -S cjson notcurses ffmpeg python-requests python-playwright
+$ playwright install chromium
 ```
 
 ## Installation
