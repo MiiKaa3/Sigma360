@@ -290,8 +290,11 @@ static int sigma360_tui_watch(const char *course, int lecture) {
     char path[256];
     int n = snprintf(path, sizeof(path), "/%s/%d", (course != NULL) ? course : "unknown", lecture);
     if (n < 0 || (size_t)n >= sizeof(path)) {
-        return -1;
+        return -1;  // truncated or encoding error
     }
+
+    // TESTING
+    strcpy(path, "./src/test");
 
     pid_t pid = fork();
     if (pid < 0) {
@@ -300,7 +303,7 @@ static int sigma360_tui_watch(const char *course, int lecture) {
 
     if (pid == 0) {
         // Child
-        char *const argv[] = { "/home/mikey/dev/Sigma360/src/cmds/watch", "-l", "/home/mikey/dev/Sigma360/src/test", NULL };
+        char *const argv[] = { "./src/cmds/watch", "-l", path, NULL };
         execv(argv[0], argv);
         _exit(127);
     }
