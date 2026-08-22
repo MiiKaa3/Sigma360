@@ -4,8 +4,6 @@
 #include <stdio.h>
 #include <string.h>
 #include <dirent.h>
-#include <math.h>
-#include <ctype.h>
 #include <cjson/cJSON.h>
 #include <sys/stat.h>
 #include <sys/types.h>
@@ -13,8 +11,8 @@
 
 int findcwd(char** buf)
 {
-    size_t size;
-    size = (size_t) pathconf(".", _PC_PATH_MAX);
+    long size;
+    size = pathconf(".", _PC_PATH_MAX);
     if (size == -1) {
         fprintf(stderr, "CHECK YOUR FILE PATH LIMITS!!!!!");
         return -1;

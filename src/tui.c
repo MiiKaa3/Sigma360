@@ -342,7 +342,6 @@ static int sigma360_tui_watch(char* dir)
         char* cmd;
         findcwd(&cmd);
         strcat(cmd, "/src/cmds/watch");
-        printf(cmd);
         
         char *const argv[] = { cmd, "-l", dir, NULL };
         execv(argv[0], argv);
