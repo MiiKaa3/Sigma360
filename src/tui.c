@@ -10,6 +10,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>
+#include <time.h>
 #include <unistd.h>
 #include <string.h>
 #include <errno.h>
@@ -666,6 +667,8 @@ static int save_lecture(struct notcurses *nc, struct ncplane *box, nav_t *nav,
     return rc;
 }
 
+static char *save_lecture_name(nav_t *nav);
+
 static int sigma360_tui_save(struct notcurses *nc, nav_t *nav, const char *root) {
     struct ncplane *std = notcurses_stdplane(nc);
     unsigned rows, cols;
@@ -755,6 +758,42 @@ static int sigma360_tui_save(struct notcurses *nc, nav_t *nav, const char *root)
     int rc = 1; // cancelled
     if (accepted && name != NULL && name[0] != '\0') {
         rc = save_lecture(nc, box, nav, root, name);
+        
+        char video[PATH_MAX], audio[PATH_MAX], out[PATH_MAX];
+
+        snprintf(video, sizeof video, "%s/v1.mp4", name);
+        snprintf(audio, sizeof audio, "%s/audio.mp4", name);
+        snprintf(out, sizeof out, "%s/%s.mp4", name, save_lecture_name(nav));
+
+        char *args[] = {
+            "ffmpeg", "-nostdin", "-y",
+            "-i", video,
+            "-i", audio,
+            "-map", "0:v:0",
+            "-map", "1:a:0",
+            "-c", "copy",
+            "-shortest",
+            out,
+            NULL
+        };
+
+        pid_t pid = fork();
+        if (pid < 0) return false;
+
+        if (!pid) { // child
+            int fd = open("/dev/null", O_RDWR);
+            if (fd >= 0) {
+                dup2(fd, STDIN_FILENO);
+                dup2(fd, STDOUT_FILENO);
+                dup2(fd, STDERR_FILENO);
+                if (fd > STDERR_FILENO) close(fd);
+            }
+            execvp("ffmpeg", args);
+            _exit(127);
+        }
+
+        int status;
+        while (waitpid(pid, &status, 0) < 0 && errno == EINTR);
     }
     ncplane_destroy(box);
     free(name);
@@ -770,4 +809,25 @@ char* build_dir(char* root, char* url, int lectureNum)
     char* lecture = buildLec("Lecture%d", lectureNum);
     dir = buildArgs(dir, lecture);
     return dir;
+}
+
+static char *save_lecture_name(nav_t *nav) {
+    if (nav->depth < 1) {
+        return NULL;
+    }
+    const entry_t *course  = nav->path[nav->depth];
+    const entry_t *lecture = nav_selected(nav);   // NULL when the list is empty
+    if (lecture == NULL || course->label == NULL || lecture->label == NULL) {
+        return NULL;
+    }
+
+    int len = snprintf(NULL, 0, "%s_%s", course->label, lecture->label);
+    if (len < 0) {
+        return NULL;
+    }
+    char *s = malloc((size_t)len + 1);
+    if (s != NULL) {
+        snprintf(s, (size_t)len + 1, "%s_%s", course->label, lecture->label);
+    }
+    return s;
 }
