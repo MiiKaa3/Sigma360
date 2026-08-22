@@ -93,6 +93,16 @@ char* buildArgs(char* option, char* var)
     int len = snprintf(NULL, 0, option, var);
     char* str = malloc(++len * sizeof(char));
     snprintf(str, len, option, var);
+    free(option);
+    return str;
+}
+
+char* buildLec(char* option, int num)
+{
+    int len = snprintf(NULL, 0, option, num);
+    char* str = malloc(++len * sizeof(char));
+    snprintf(str, len, option, num);
+    free(option);
     return str;
 }
 
@@ -208,4 +218,10 @@ bool is_dir_empty(char* dir)
     }
     closedir(folder);
     return true;
+}
+
+void expand_path(char** path)
+{
+    *path = realloc(*path, (strlen(*path)+strlen("/%s")+1)*sizeof(char));
+    strcat(*path, "/%s");
 }
