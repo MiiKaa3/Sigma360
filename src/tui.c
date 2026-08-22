@@ -200,7 +200,7 @@ static void draw_all(panes_t *panes, nav_t *nav) {
 // Main                                        //
 // ------------------------------------------- //
 
-static int sigma360_tui_watch(char* dir);
+static int sigma360_tui_watch(char* dir, bool split, char* time);
 
 int sigma360_tui(void) {
     cJSON *json = get_courses_json("./courses.json");
@@ -305,7 +305,7 @@ int sigma360_tui(void) {
                     expand_path(&dir);
                     char* lecture = buildLec("Lecture%d", (int)l->sel + 1);
                     dir = buildArgs(dir, lecture);
-                    sigma360_tui_watch(dir);
+                    sigma360_tui_watch(dir, false, "00:00:00");
                     free(dir);
                 }
             }
@@ -324,7 +324,7 @@ int sigma360_tui(void) {
     return 0;
 }
 
-static int sigma360_tui_watch(char* dir)
+static int sigma360_tui_watch(char* dir, bool split, char* time)
 {
     pid_t pid = fork();
     if (pid < 0) {
@@ -346,8 +346,13 @@ static int sigma360_tui_watch(char* dir)
         char* cmd;
         findcwd(&cmd);
         strcat(cmd, "/src/cmds/watch");
+        printf(cmd);
         
-        char *const argv[] = { cmd, "-l", dir, NULL };
+        char* const argv[];
+        if (split) {
+            argv[] = { cmd, "-l", dir, "-t", time, "-s", NULL };
+        }
+        argv[] = { cmd, "-l", dir, "-t", time, NULL };
         execv(argv[0], argv);
         _exit(127);
     }
