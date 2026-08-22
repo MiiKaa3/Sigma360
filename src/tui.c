@@ -12,6 +12,7 @@
 #include <errno.h>
 #include <sys/types.h>
 #include <sys/wait.h>
+#include <fcntl.h>
 
 #define COL_BORDER_DIM    0x6272a4u
 #define COL_BORDER_ACTIVE 0xbd93f9u
@@ -303,6 +304,16 @@ static int sigma360_tui_watch(const char *course, int lecture) {
 
     if (pid == 0) {
         // Child
+        int devnull = open("/dev/null", O_RDWR);
+        if (devnull < 0) {
+            _exit(127);
+        }
+        dup2(devnull, STDOUT_FILENO);
+        dup2(devnull, STDERR_FILENO);
+        if (devnull > STDERR_FILENO) {
+            close(devnull);
+        }
+
         char *const argv[] = { "./src/cmds/watch", "-l", path, NULL };
         execv(argv[0], argv);
         _exit(127);
