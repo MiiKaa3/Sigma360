@@ -1,6 +1,6 @@
-#ifndef __TUI_H__
-#define __TUI_H__
+#ifndef SIGMA360_TUI_H
+#define SIGMA360_TUI_H
 
 int sigma360_tui(void);
 
-#endif // __TUI_H__
+#endif // SIGMA360_TUI_H

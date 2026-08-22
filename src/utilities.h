@@ -1,5 +1,5 @@
-#ifndef __UTILITIES_H__
-#define __UTILITIES_H__
+#ifndef SIGMA360_UTILITIES_H
+#define SIGMA360_UTILITIES_H
 
 #include <cjson/cJSON.h>
 
@@ -15,4 +15,4 @@ cJSON *get_json(char* filename);
 
 void sort_cjson_array(cJSON *array);
 
-#endif // __UTILITIES_H__
+#endif // SIGMA360_UTILITIES_H
