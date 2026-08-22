@@ -11,7 +11,7 @@ class Fetcher():
         self.session = self.load_session("cookies.json")
     
     # Functionality that retrieves and makes courses.json
-    def load(self, outfile:str):
+    def load(self, outfile:str="../../"):
         if not self.check_auth():
             print("Failed authentication")
             return 1
@@ -173,7 +173,15 @@ def main():
     parser = argparse.ArgumentParser(description="Sigma360 Echo360 fetcher")
     group = parser.add_mutually_exclusive_group(required=True)
 
-    group.add_argument("--load", metavar=("OUTFILE"),  help="Fetch and save the course list")
+    group.add_argument(
+        "--load",
+        nargs="?",
+        const="../../",
+        default=None,
+        metavar="OUTFILE",
+        help="Fetch and save the course list (default: courses.json)",
+    )
+
     group.add_argument(
         "--watch",
         nargs=3,
