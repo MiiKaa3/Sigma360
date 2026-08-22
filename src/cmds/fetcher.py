@@ -10,7 +10,7 @@ class Fetcher():
     def __init__(self, course_code: str, lecture_number: str):
         self.course_code = course_code
         self.lecture_number = lecture_number
-        self.session = self.load_session("cook.json")
+        self.session = self.load_session("cookies.json")
 
     def load(self):
         self.check_auth()
@@ -35,19 +35,38 @@ class Fetcher():
         
         return 0
         
-    def watch(self, url, path):
+    def watch(self, video_url, audio_url, path):
         self.check_auth()
-
-        download_lesson(url, path)
         
-    def download_lesson(self, manifest_url, output_path):
-        cookies = cookie_header(self.session)
+         
+        self.download_mp4(video_url, video_path)
+        self.download_mp4(video_url, video_path)
+
+        self.make_lecture(video_url, audio_url, path)
+        
+
+    def download_mp4(self, url: str, output_path: str):
+        resp = self.session.get(url, stream=True)
+        resp.raise_for_status()
+        with open(output_path, "wb") as f:
+            for chunk in resp.iter_content(chunk_size=1024*1024):
+                f.write(chunk)
+        
+    def make_lecture(self, video_url, audio_url, output_path):
+        video_path = "video.mp4"
+        audio_path = "audio.mp4"
+
+        self.download_mp4(video_url, video_path)
+        self.download_mp4(audio_url, audio_path)
         cmd = [
-                "ffmpeg",
-                "-headers", f"Cookie: {cookies}\r\n",
-                "-i", manifest_url,
-                "-c", "copy",
-                output_path,
+            "ffmpeg",
+            "-i", video_path,
+            "-i", audio_path,
+            "-map", "0:v:0",
+            "-map", "1:a:0",
+            "-c", "copy",
+            "-bsf:a", "aac_adtstoasc",
+            output_path,
         ]
         subprocess.run(cmd, check=True)        
 
@@ -166,10 +185,12 @@ def cookie_header(session: requests.Session, domain_filter: str = "echo360.net.a
 
 if __name__ == "__main__":
     fetcher = Fetcher("STAT3004", "12")
-    fetcher.watch("https://content.echo360.net.au/0000.60d4291f-70de-44d8-a332-d7c51983738d/7bee4707-6a80-4cd1-b2fe-b88519a4ff15/1/s2_av.m3u8?x-uid=0166278b-7f37-4d8a-8672-a0c464c95943&x-instid=60d4291f-70de-44d8-a332-d7c51983738d&x-lid=G_8d86e9f9-f41c-4168-91ac-5254f1578d0e_faa364b6-a253-44fe-acac-1d1a438bf11a_2026-07-27T12%3A00%3A00.000_2026-07-27T13%3A00%3A00.000&x-sid=faa364b6-a253-44fe-acac-1d1a438bf11a&x-mid=7bee4707-6a80-4cd1-b2fe-b88519a4ff15&x-act=videoView&x-src=desktop", "output.mp4")
+    # resp = fetcher.session.get("https://content.echo360.net.au/0000.60d4291f-70de-44d8-a332-d7c51983738d/7bee4707-6a80-4cd1-b2fe-b88519a4ff15/1/s2q1.m3u8?x-uid=0166278b-7f37-4d8a-8672-a0c464c95943&x-instid=60d4291f-70de-44d8-a332-d7c51983738d&x-lid=G_8d86e9f9-f41c-4168-91ac-5254f1578d0e_faa364b6-a253-44fe-acac-1d1a438bf11a_2026-07-27T12%3A00%3A00.000_2026-07-27T13%3A00%3A00.000&x-sid=faa364b6-a253-44fe-acac-1d1a438bf11a&x-mid=7bee4707-6a80-4cd1-b2fe-b88519a4ff15&x-act=videoView&x-src=desktop")  # your existing session, cookies attached
+    # print(resp.text)
+    # fetcher.watch("https://content.echo360.net.au/0000.60d4291f-70de-44d8-a332-d7c51983738d/7bee4707-6a80-4cd1-b2fe-b88519a4ff15/1/s2q1.mp4?x-uid=0166278b-7f37-4d8a-8672-a0c464c95943&x-instid=60d4291f-70de-44d8-a332-d7c51983738d&x-lid=G_8d86e9f9-f41c-4168-91ac-5254f1578d0e_faa364b6-a253-44fe-acac-1d1a438bf11a_2026-07-27T12%3A00%3A00.000_2026-07-27T13%3A00%3A00.000&x-sid=faa364b6-a253-44fe-acac-1d1a438bf11a&x-mid=7bee4707-6a80-4cd1-b2fe-b88519a4ff15&x-act=videoView&x-src=desktop", "https://content.echo360.net.au/0000.60d4291f-70de-44d8-a332-d7c51983738d/7bee4707-6a80-4cd1-b2fe-b88519a4ff15/1/s0q1.mp4?x-uid=0166278b-7f37-4d8a-8672-a0c464c95943&x-instid=60d4291f-70de-44d8-a332-d7c51983738d&x-lid=G_8d86e9f9-f41c-4168-91ac-5254f1578d0e_faa364b6-a253-44fe-acac-1d1a438bf11a_2026-07-27T12%3A00%3A00.000_2026-07-27T13%3A00%3A00.000&x-sid=faa364b6-a253-44fe-acac-1d1a438bf11a&x-mid=7bee4707-6a80-4cd1-b2fe-b88519a4ff15&x-act=videoView&x-src=desktop", "output.mp4")
     #url = f"https://echo360.net.au/section/faa364b6-a253-44fe-acac-1d1a438bf11a/home"
     #r = fetcher.session.get(url)
-
+    fetcher.download_mp4("https://content.echo360.net.au/0000.60d4291f-70de-44d8-a332-d7c51983738d/7bee4707-6a80-4cd1-b2fe-b88519a4ff15/1/s1q1.mp4?x-uid=0166278b-7f37-4d8a-8672-a0c464c95943&x-instid=60d4291f-70de-44d8-a332-d7c51983738d&x-lid=G_8d86e9f9-f41c-4168-91ac-5254f1578d0e_faa364b6-a253-44fe-acac-1d1a438bf11a_2026-07-27T12%3A00%3A00.000_2026-07-27T13%3A00%3A00.000&x-sid=faa364b6-a253-44fe-acac-1d1a438bf11a&x-mid=7bee4707-6a80-4cd1-b2fe-b88519a4ff15&x-act=videoView&x-src=desktop", "screen2.mp4")
     #print(r.status_code)
     #print(r.url)
     #print(r.headers.get("content-type"))
