@@ -8,9 +8,12 @@ Echo360 but as a terminal client/user interface
 - notcurses
 - ffmpeg
 - python-requests
+- python-playwright
 
-`sudo pacman -S cjson notcurses ffmpeg python-requests python-playwright`
-`playwright install chromium`
+```
+sudo pacman -S cjson notcurses ffmpeg python-requests python-playwright
+playwright install chromium
+```
 
 ## Installation
 ```
@@ -23,10 +26,8 @@ cmake --build build
 ## Usage
 ```
 $ ./sigma360 --help
-Usage: sigma360 [arguments]
+Usage: sigma360 (arguments)
 Arguments:
   --version   Show version information
   --help      Show this help message
-  --cli       Enter CLI mode
-  --tui       Enter TUI mode
 ```
