@@ -52,6 +52,10 @@ class Fetcher():
         target = lessons[int(lecture_number) - 1]
 
         medias = target["lesson"]["medias"]
+        if len(medias) == 0:
+            print("Lecture doesn't exist yet")
+            return 2
+
         media_id = medias[0]["id"]  # mediaId is shared across sources for one lesson
 
         institute = "60d4291f-70de-44d8-a332-d7c51983738d"
@@ -101,6 +105,8 @@ class Fetcher():
                     except:
                         print("Directory not made")      
                     t.sleep(0.2)
+        
+        return 0
 
     def load_session(self, cookie_file:str) -> requests.Session:
         session = requests.Session()
@@ -219,24 +225,28 @@ def main():
     )
 
     args = parser.parse_args()
+    
+    code = 0
 
     if args.load:
         outfile = args.load
         fetcher = Fetcher()
         print(f"Fetcher will load, saving to {outfile}")
-        fetcher.load(outfile)
+        code = fetcher.load(outfile)
 
     elif args.watch:
         path = args.watch
         fetcher = Fetcher()
         print(f"Fetcher will fetch this lecture: {path}") 
-        fetcher.watch(path)
+        code = fetcher.watch(path)
 
     elif args.thumbnails:
         outpath = args.thumbnails
         fetcher = Fetcher()
         print(f"Fetcher will retrieve thumbnails for all active courses")
-        fetcher.get_thumbnails(outpath)
+        code = fetcher.get_thumbnails(outpath)
+
+    return code
 
 if __name__ == "__main__":
     main()
