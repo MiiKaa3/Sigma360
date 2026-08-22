@@ -136,6 +136,16 @@ class Fetcher():
         
         return 0
 
+    def _section_id_for_course(self, course_code: str) -> str:
+        with open("courses.json") as f:
+            courses = json.load(f)
+        matches = [c for c in courses if c["courseCode"] == course_code]
+        if not matches:
+            raise ValueError(f"No course found for code {course_code}")
+        # if multiple offerings exist (retaken courses), you'll want to disambiguate —
+        # e.g. most recent term, or raise if ambiguous
+        return matches[0]["url"]  # you named sectionId "url" in load()
+
 def getYearSem(date: str) -> str:
         y, m, d = date.split("-")
         
