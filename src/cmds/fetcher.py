@@ -2,12 +2,11 @@ import base64
 import json 
 import time as t
 import requests
+import argparse
 
 class Fetcher():
 
-    def __init__(self, course_code: str, lecture_number: str):
-        self.course_code = course_code
-        self.lecture_number = lecture_number
+    def __init__(self):
         self.session = self.load_session("cookies.json")
 
     def load(self):
@@ -162,7 +161,32 @@ def getYearSem(date: str) -> str:
             return year + " Summer Semester"
         else:
             return year + " Semester " + sem
-    
+
+def main():
+    parser = argparse.ArgumentParser(description="Sigma360 Echo360 fetcher")
+    group = parser.add_mutually_exclusive_group(required=True)
+
+    group.add_argument("--load", action="store_true", help="Fetch and save the course list")
+    group.add_argument(
+        "--watch",
+        nargs=3,
+        metavar=("SECTION_ID", "LECTURE_NUMBER", "PATH"),
+        help="Download a specific lecture",
+    )
+
+    args = parser.parse_args()
+
+    if args.load:
+        fetcher = Fetcher()
+        print("Fetcher will load")
+        fetcher.load()
+
+    elif args.watch:
+        section_id, lecture_number, path = args.watch
+        fetcher = Fetcher()
+        print(f"Fetcher will watch {section_id}'s lecture {lecture_number} and save to {path}") 
+        fetcher.watch(section_id, lecture_number, path)
+
+
 if __name__ == "__main__":
-    fetcher = Fetcher("STAT3004", "2")
-    fetcher.watch("faa364b6-a253-44fe-acac-1d1a438bf11a", "2", "../test/")
+    main()
