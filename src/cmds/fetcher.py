@@ -1,3 +1,4 @@
+import os
 import base64
 import json 
 import time as t
@@ -5,10 +6,13 @@ from datetime import datetime
 import requests
 import argparse
 
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+COOKIE_FILE = os.path.join(SCRIPT_DIR, "..", "..", "cookies.json")
+
 class Fetcher():
 
     def __init__(self):
-        self.session = self.load_session("cookies.json")
+                self.session = self.load_session("/src/cmds/cookies.json")
     
     # Functionality that retrieves and makes courses.json
     def load(self, outfile:str="../../courses.json"):
@@ -114,7 +118,7 @@ class Fetcher():
             "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36"
         })
     
-        with open(cookie_file) as f:
+        with open(COOKIE_FILE) as f:
             cookies = json.load(f)
     
         expiries = {}

@@ -5,6 +5,11 @@ import json
 import base64
 import time as t
 
+
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+COOKIE_FILE = os.path.join(SCRIPT_DIR, "..", "..", "cookies.json")
+
+
 def get_echo360_cookies(cookie_file: str = "cookies.json"):
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=False)  # visible — MFA needs a human
@@ -19,9 +24,9 @@ def get_echo360_cookies(cookie_file: str = "cookies.json"):
             print("Timed out waiting for login — closing browser...")
             browser.close()
             return 7
-
+        
         cookies = context.cookies()
-        with open(cookie_file, "w") as f:
+        with open(COOKIE_FILE, "w") as f:
             json.dump(cookies, f, indent=4)
 
         browser.close()
@@ -80,18 +85,16 @@ def _cloudfront_b64_decode(s: str) -> bytes:
     return base64.b64decode(s)
 
 def main():
-    cookie_file = "cookies.json"
-
-    if os.path.exists("cookies.json"):
-        valid = check_auth("cookies.json")
+    if os.path.exists(COOKIE_FILE):
+        valid = check_auth(COOKIE_FILE)
     else:
         print("No cookies found")
         valid = False
 
     if not valid:
         print("Fetching fresh cookies...")
-        get_echo360_cookies(cookie_file)
-        valid = check_auth(cookie_file)
+        get_echo360_cookies(COOKIE_FILE)
+        valid = check_auth(COOKIE_FILE)
         if valid:
             print("Cookies validated")
             return 0
