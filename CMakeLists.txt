@@ -38,3 +38,5 @@ target_compile_options(sigma360 PRIVATE
 target_link_options(sigma360 PRIVATE
     $<$<CONFIG:Debug>:-fsanitize=address>
 )
+
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}")
