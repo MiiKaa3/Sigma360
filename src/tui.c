@@ -286,11 +286,7 @@ pid_t pid = fork();
             printf("Child exited with status %d\n", WEXITSTATUS(status));
         } else {
             printf("Child did not exit normally\n");
-	    return 1;
         }
-	if (WEXITSTATUS(status) != 0) {
-	    return 1;
-	}
     }
 
     cJSON *json = get_courses_json("./courses.json");
@@ -348,7 +344,7 @@ pid_t pid = fork();
         }
         if (id == 'q' || id == NCKEY_ESC) {
             if (!fork()) {
-                execlp("rm", "rm", "-rf", root, NULL);
+                execlp("rm", "rm", "-rf", "/tmp/sigma_*", NULL);
             }
             wait(NULL);
             break; // quiting out
@@ -415,10 +411,20 @@ pid_t pid = fork();
         }
 
         if (nav.depth > 0 && nav.depth > 0 && nav_current(&nav)->count > 0) {
-            char imgfile[128];
-            
-            sprintf(imgfile, "./test_tn/%lu.png", 1 + nav_current(&nav)->sel % 3);
-            sigma360_tui_image_show(panes.preview.content, imgfile);
+            char imgfile[4096];
+            char* dir = build_dir(root, nav.path[nav.depth]->url,
+                    (int)nav_current(&nav)->sel + 1);
+            char temp[4096];
+            sprintf(temp, "%s/t.jpg", dir);
+            fprintf(stderr, "Trying to display %s.\n", temp);
+            if (access(temp, F_OK) == 0) {
+                sigma360_tui_image_show(panes.preview.content, temp);
+            } else {
+                /* sprintf(imgfile, "./previewless.png"); */
+                fprintf(stderr, "Couldn't find preview.\n");
+                /* sigma360_tui_image_show(panes.preview.content, imgfile); */
+            }
+            free(dir);
         } else {
             sigma360_tui_image_clear();
         }
