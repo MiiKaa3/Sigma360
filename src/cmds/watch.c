@@ -143,8 +143,7 @@ int fetch_lecture(Parameters* params)
     strcat(buf, temp);
 
     if (!fork()) {
-        execlp("python3", "python3", "fetcher"
-                "--watch", buf, params->course, params->lecture, NULL);
+        execlp("python3", "python3", buf, "--watch", params->lecture, NULL);
         // If exec fails
         return BAD_FETCH;
     }
