@@ -9,7 +9,8 @@ Echo360 but as a terminal client/user interface
 - ffmpeg
 - python-requests
 
-`sudo pacman -S cjson notcurses ffmpeg python-requests`
+`sudo pacman -S cjson notcurses ffmpeg python-requests python-playwright firefox`
+`playwright install chromium`
 
 ## Installation
 ```
