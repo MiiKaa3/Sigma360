@@ -136,20 +136,18 @@ bool check_time_arg(char* time)
 
 int fetch_lecture(Parameters* params)
 {
-    int exitCode = GOOD;
     char* buf;
     findcwd(&buf);
-    char* temp = "fetcher.py";
+    char* temp = "/src/cmds/fetcher.py";
     strcat(buf, temp);
-
+    fprintf(stderr, "%s\n", params->lecture);
     if (!fork()) {
         execlp("python3", "python3", buf, "--watch", params->lecture, NULL);
         // If exec fails
         return BAD_FETCH;
     }
-    wait(&exitCode);
-    exitCode = WEXITSTATUS(exitCode);
-    return exitCode;
+    wait(NULL);
+    return 0;
 }
 
 int play_lecture(Parameters* params)
@@ -204,7 +202,6 @@ double get_mp4_dur(char* path)
     double duration;
     fscanf(fp, "%lf", &duration);
     pclose(fp);
-    printf("%f\n", duration);
     return duration;
 }
 
@@ -214,8 +211,6 @@ bool check_dur_v_timestamp(double duration, char* timestamp)
     double mins = 10*(timestamp[3]-'0') + (timestamp[4]-'0');
     double secs = 10*(timestamp[6]-'0') + (timestamp[7]-'0');
     double start = (hrs*3600) + (mins*60) + secs;
-    printf("%s\n", timestamp);
-    printf("%f\n", hrs);
     if (start >= duration) {
         return false;
     }

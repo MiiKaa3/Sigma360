@@ -301,7 +301,7 @@ int sigma360_tui(void) {
                 if (nav.depth > 0 && l->count > 0) {
                     char* dir = strdup(root);
                     expand_path(&dir);
-                    dir = buildArgs(dir, nav.path[nav.depth]->label);
+                    dir = buildArgs(dir, nav.path[nav.depth]->url);
                     expand_path(&dir);
                     char* lecture = buildLec("Lecture%d", (int)l->sel + 1);
                     dir = buildArgs(dir, lecture);
@@ -338,7 +338,7 @@ static int sigma360_tui_watch(char* dir, bool split, char* time)
             _exit(127);
         }
         dup2(devnull, STDOUT_FILENO);
-        dup2(devnull, STDERR_FILENO);
+        /* dup2(devnull, STDERR_FILENO); */
         if (devnull > STDERR_FILENO) {
             close(devnull);
         }
@@ -346,17 +346,12 @@ static int sigma360_tui_watch(char* dir, bool split, char* time)
         char* cmd;
         findcwd(&cmd);
         strcat(cmd, "/src/cmds/watch");
-        printf(cmd);
         
-        char* const argv[];
-        if (split) {
-            argv[] = { cmd, "-l", dir, "-t", time, "-s", NULL };
-        }
-        argv[] = { cmd, "-l", dir, "-t", time, NULL };
+        char* const argv[] = { cmd, "-l", dir, "-t", time, 
+            split ? "-s" : NULL, NULL };
         execv(argv[0], argv);
         _exit(127);
     }
-
     // Parent
     int status;
     while (waitpid(pid, &status, 0) < 0) {
@@ -364,10 +359,8 @@ static int sigma360_tui_watch(char* dir, bool split, char* time)
             return -1;
         }
     }
-
     if (WIFEXITED(status)) {
         return WEXITSTATUS(status);
     }
-
     return -1;
 }
