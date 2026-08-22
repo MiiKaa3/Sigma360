@@ -14,7 +14,7 @@
 #define COL_SEL_BG_IDLE   0x44475au
 #define COL_SEL_FG        0xf8f8f2u
 
-#define DETAILS_MIN_COLS 20
+#define DETAILS_MIN_COLS 10
 
 typedef struct {
     struct ncplane *frame;
@@ -22,9 +22,9 @@ typedef struct {
 } pane_t;
 
 typedef struct {
-    pane_t *parent;
-    pane_t *current;
-    pane_t *preview;
+    pane_t parent;
+    pane_t current;
+    pane_t preview;
 } panes_t;
 
 // ------------------------------------------- //
@@ -43,9 +43,9 @@ static void destroy_pane(pane_t *pane) {
 }
 
 static void destroy_panes(panes_t *panes) {
-    destroy_pane(panes->parent);
-    destroy_pane(panes->current);
-    destroy_pane(panes->preview);
+    destroy_pane(&panes->parent);
+    destroy_pane(&panes->current);
+    destroy_pane(&panes->preview);
 }
 
 static int make_pane(struct ncplane *std, pane_t *pane, int y, int x, unsigned rows, unsigned cols, uint32_t border_rgb) {
@@ -96,9 +96,9 @@ static int layout_panes(struct notcurses *nc, panes_t *panes) {
     unsigned currentw = unit * 4;
     unsigned previeww = cols - parentw - currentw;
 
-    if (make_pane(std, panes->parent,  0, 0, rows, cols,  COL_BORDER_DIM) != 0 ||
-        make_pane(std, panes->current, 0, (int)parentw, rows, currentw, COL_BORDER_ACTIVE) != 0 ||
-        make_pane(std, panes->preview, 0, (int)(parentw + currentw), rows, previeww, COL_BORDER_DIM) != 0) {
+    if (make_pane(std, &panes->parent,  0, 0, rows, cols,  COL_BORDER_DIM) != 0 ||
+        make_pane(std, &panes->current, 0, (int)parentw, rows, currentw, COL_BORDER_ACTIVE) != 0 ||
+        make_pane(std, &panes->preview, 0, (int)(parentw + currentw), rows, previeww, COL_BORDER_DIM) != 0) {
         destroy_panes(panes);
         return -1;
     }
@@ -176,9 +176,9 @@ static void draw_list(struct ncplane *p, list_t *l, bool active) {
 }
 
 static void draw_all(panes_t *panes, nav_t *nav) {
-    draw_list(panes->parent->content,  nav_parent(nav),  false);
-    draw_list(panes->current->content, nav_current(nav), true);
-    draw_list(panes->preview->content, nav_preview(nav), false);
+    draw_list(panes->parent.content,  nav_parent(nav),  false);
+    draw_list(panes->current.content, nav_current(nav), true);
+    draw_list(panes->preview.content, nav_preview(nav), false);
 }
 
 // ------------------------------------------- //
@@ -206,7 +206,7 @@ int sigma360_tui(void) {
     struct notcurses *nc = notcurses_core_init(&opts, NULL);
     if (nc == NULL) {
         nav_free(&nav);
-        cJSON_free(json);
+        cJSON_Delete(json);
         return 1;
     }
 
@@ -214,7 +214,7 @@ int sigma360_tui(void) {
     if (layout_panes(nc, &panes) != 0) {
         notcurses_stop(nc);
         nav_free(&nav);
-        cJSON_free(json);
+        cJSON_Delete(json);
         return 1;
     }
 

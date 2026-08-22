@@ -126,3 +126,96 @@ static int load_courses(nav_t *n) {
     n->root.children.loaded = true;
     return 0;
 }
+
+// ------------------------------------------- //
+// nav                                         //
+// ------------------------------------------- //
+
+int nav_init(nav_t *n, cJSON *json) {
+    memset(n, 0, sizeof(*n));
+    n->json = json;
+    n->depth = 0;
+    n->path[0] = &n->root;
+
+    if (load_courses(n) != 0) {
+        nav_free(n);
+        return -1;
+    }
+
+    return 0;
+}
+
+void nav_free(nav_t *n) {
+    list_free(&n->root.children);
+    n->depth = 0;
+    n->path[0] = &n->root;
+    n->json = NULL;
+}
+
+static int ensure_loaded(nav_t *n, entry_t *e) {
+    if (e->children.loaded) {
+        return 0;
+    }
+
+    e->children.loaded = true;
+    if (e->load == NULL) {
+        return 0;
+    }
+    return e->load(n, e);
+}
+
+list_t *nav_current(nav_t *n) {
+    return &n->path[n->depth]->children;
+}
+ 
+list_t *nav_parent(nav_t *n) {
+    return (n->depth > 0) ? &n->path[n->depth - 1]->children : NULL;
+}
+ 
+entry_t *nav_selected(nav_t *n) {
+    list_t *l = nav_current(n);
+    return (l->count > 0) ? &l->items[l->sel] : NULL;
+}
+ 
+list_t *nav_preview(nav_t *n) {
+    entry_t *e = nav_selected(n);
+    if (e == NULL) {
+        return NULL;
+    }
+    ensure_loaded(n, e);
+    return (e->children.count > 0) ? &e->children : NULL;
+}
+ 
+void nav_move(nav_t *n, int dy) {
+    list_t *l = nav_current(n);
+    if (l->count == 0) {
+        return;
+    }
+    long long i = (long long)l->sel + dy;
+    if (i < 0) {
+        i = (long long)l->count - 1;
+    } else if (i >= (long long)l->count) {
+        i = 0;
+    }
+    l->sel = (size_t)i;
+}
+ 
+bool nav_descend(nav_t *n) {
+    entry_t *e = nav_selected(n);
+    if (e == NULL || n->depth + 1 >= NAV_MAX_DEPTH) {
+        return false;
+    }
+    if (ensure_loaded(n, e) != 0 || e->children.count == 0) {
+        return false; /* leaf */
+    }
+    n->path[++n->depth] = e;
+    return true;
+}
+ 
+bool nav_ascend(nav_t *n) {
+    if (n->depth == 0) {
+        return false;
+    }
+    n->depth--;
+    return true;
+}

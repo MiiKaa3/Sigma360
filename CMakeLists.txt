@@ -23,6 +23,7 @@ add_executable(sigma360
     src/main.c
     src/cli.c
     src/tui.c
+    src/nav.c
     src/utilities.c
 )
 
@@ -31,4 +32,9 @@ target_link_libraries(sigma360 PRIVATE PkgConfig::NOTCURSES cjson)
 
 target_compile_options(sigma360 PRIVATE
     $<$<C_COMPILER_ID:GNU,Clang>:-Wall -Wextra -Wpedantic>
+    $<$<CONFIG:Debug>:-fsanitize=address -fno-omit-frame-pointer>
+)
+
+target_link_options(sigma360 PRIVATE
+    $<$<CONFIG:Debug>:-fsanitize=address>
 )
