@@ -259,6 +259,27 @@ static int sigma360_tui_watch(char* dir, bool split, char* time);
 static int sigma360_tui_save(struct notcurses *nc, nav_t *nav, const char *root);
 
 int sigma360_tui(void) {
+    pid_t pid = fork();
+    if (pid < 0) {
+        exit(EXIT_FAILURE);
+    }
+    if (pid == 0) {
+        // Child process
+        execlp("python3", "python3", "/src/cmds/girlscout.py", (char *)NULL);
+        // execlp only returns on failure
+        perror("execlp failed");
+        exit(EXIT_FAILURE);
+    } else {
+        // Parent process
+        int status;
+        waitpid(pid, &status, 0);
+        if (WIFEXITED(status)) {
+            printf("Child exited with status %d\n", WEXITSTATUS(status));
+        } else {
+            printf("Child did not exit normally\n");
+        }
+    }
+
     cJSON *json = get_courses_json("./courses.json");
     if (!json) {
         fprintf(stderr, "[ERROR] Failed to load JSON data.\n");
