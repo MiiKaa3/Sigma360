@@ -21,6 +21,7 @@
 #define COL_SEL_BG_ACTIVE 0x2f7482u
 #define COL_SEL_BG_IDLE   0x44475au
 #define COL_SEL_FG        0xf8f8f2u
+#define COL_MODAL_BG      0x282a36u
 #define COL_HELP_KEY      0xbd93f9u
 #define COL_HELP_DESC     0x91bbffu
 
@@ -111,6 +112,10 @@ static int layout_panes(struct notcurses *nc, panes_t *panes) {
     struct ncplane *std = notcurses_stdplane(nc);
     unsigned rows, cols;
     ncplane_dim_yx(std, &rows, &cols);
+
+    if (rows < HELP_ROWS + 3 || cols < 8) {
+        return -1; // not enough space for the columns plus the help bar
+    }
 
     unsigned bodyh = rows - HELP_ROWS;
     unsigned unit = cols / 8;
@@ -249,6 +254,7 @@ static void draw_all(panes_t *panes, nav_t *nav) {
 // ------------------------------------------- //
 
 static int sigma360_tui_watch(char* dir, bool split, char* time);
+static int sigma360_tui_save(struct notcurses *nc);
 
 int sigma360_tui(void) {
     cJSON *json = get_courses_json("./courses.json");
@@ -315,7 +321,7 @@ int sigma360_tui(void) {
         if (id == NCKEY_RESIZE) {
             unsigned rows, cols;
             if (notcurses_refresh(nc, &rows, &cols) != 0) {
-                continue;   /* couldn't re-fetch; try again on the next event */
+                continue;   // couldn't re-fetch; try again on the next event
             }
         
             destroy_panes(&panes);
@@ -359,6 +365,9 @@ int sigma360_tui(void) {
                     free(dir);
                 }
             }
+        } else if (id == 's') {
+            sigma360_tui_image_clear();
+            sigma360_tui_save(nc);
         } else {
             continue; // some unbound key; no redraw required
         }
@@ -422,4 +431,106 @@ static int sigma360_tui_watch(char* dir, bool split, char* time)
         return WEXITSTATUS(status);
     }
     return -1;
+}
+
+static int sigma360_tui_save(struct notcurses *nc) {
+    struct ncplane *std = notcurses_stdplane(nc);
+    unsigned rows, cols;
+    ncplane_dim_yx(std, &rows, &cols);
+
+    unsigned boxh = 5;
+    unsigned boxw = (cols > 60) ? 60 : cols;
+    if (rows < boxh || boxw < 20) {
+        return -1; // no room for the dialog
+    }
+
+    struct ncplane_options bopts = {
+        .y = (int)(rows - boxh) / 2,
+        .x = (int)(cols - boxw) / 2,
+        .rows = boxh,
+        .cols = boxw,
+    };
+    struct ncplane *box = ncplane_create(std, &bopts);
+    if (box == NULL) {
+        return -1;
+    }
+
+    // An opaque base cell, otherwise the panes underneath show through.
+    uint64_t base = 0;
+    ncchannels_set_fg_rgb(&base, COL_SEL_FG);
+    ncchannels_set_bg_rgb(&base, COL_MODAL_BG);
+    ncplane_set_base(box, " ", 0, base);
+
+    uint64_t border = 0;
+    ncchannels_set_fg_rgb(&border, COL_BORDER_ACTIVE);
+    ncchannels_set_bg_rgb(&border, COL_MODAL_BG);
+    ncplane_perimeter_rounded(box, 0, border, 0);
+
+    ncplane_set_fg_rgb(box, COL_HELP_DESC);
+    ncplane_set_bg_rgb(box, COL_MODAL_BG);
+    ncplane_putstr_yx(box, 1, 2, "save as:  (enter to confirm, esc to cancel)");
+
+    struct ncplane_options ropts = {
+        .y = 2, .x = 2, .rows = 1, .cols = boxw - 4,
+    };
+    struct ncplane *rp = ncplane_create(box, &ropts);
+    if (rp == NULL) {
+        ncplane_destroy(box);
+        return -1;
+    }
+
+    struct ncreader_options rdopts = {0};
+    ncchannels_set_fg_rgb(&rdopts.tchannels, COL_SEL_FG);
+    ncchannels_set_bg_rgb(&rdopts.tchannels, COL_MODAL_BG);
+    rdopts.flags = NCREADER_OPTION_CURSOR | NCREADER_OPTION_HORSCROLL;
+
+    // ncreader takes ownership of rp; ncreader_destroy frees it.
+    struct ncreader *rd = ncreader_create(rp, &rdopts);
+    if (rd == NULL) {
+        ncplane_destroy(rp);
+        ncplane_destroy(box);
+        return -1;
+    }
+
+    bool accepted = false;
+    struct ncinput ni;
+    for (;;) {
+        notcurses_render(nc);
+
+        uint32_t id = notcurses_get_blocking(nc, &ni);
+        if (id == (uint32_t)-1) {
+            break;
+        }
+        if (ni.evtype == NCTYPE_RELEASE) {
+            continue;
+        }
+        if (id == NCKEY_ESC) {
+            break;
+        }
+        if (id == NCKEY_ENTER) {
+            accepted = true;
+            break;
+        }
+        ncreader_offer_input(rd, &ni);
+    }
+
+    char *name = NULL;
+    ncreader_destroy(rd, accepted ? &name : NULL);
+    ncplane_destroy(box);
+    notcurses_cursor_disable(nc);
+
+    int rc = 1; // cancelled
+    if (accepted && name != NULL && name[0] != '\0') {
+        fprintf(stderr, "%s\n", name);
+        FILE *f = fopen(name, "w");
+        if (f == NULL) {
+            rc = -1;
+        } else {
+            fputs("hello world\n", f);
+            fclose(f);
+            rc = 0;
+        }
+    }
+    free(name);
+    return rc;
 }
