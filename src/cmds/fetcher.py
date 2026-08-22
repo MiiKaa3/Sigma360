@@ -11,7 +11,7 @@ class Fetcher():
         self.session = self.load_session("cookies.json")
     
     # Functionality that retrieves and makes courses.json
-    def load(self, outfile:str="../../"):
+    def load(self, outfile:str="../../courses.json"):
         if not self.check_auth():
             print("Failed authentication")
             return 1
@@ -76,7 +76,27 @@ class Fetcher():
                 f.write(chunk)
         return True
     
-    
+   # Third Functionality is to load the thumbnails into the relevant directories. 
+    def get_thumbnails(self, outpath: str):
+        with open("../../courses.json") as f:
+            all_courses = json.load(f)
+        active_courses = [course for course in all_courses if course["isActive"]]
+        
+        institute = "60d4291f-70de-44d8-a332-d7c51983738d"
+
+        for course in active_courses:
+            lessons = self._get_syllabus(course["url"])
+            for i, lesson in enumerate(lessons, start=1):
+                for media in lesson["lesson"]["medias"]:
+                    media_id = media["id"]
+                    thumb_url = f"https://thumbnails.echo360.net.au/0000.{institute}/{media_id}/1/poster1.jpg"
+                    code = course["courseCode"]
+                    path = f"{outpath}/{code}/Lecture{i}/t.jpg"
+                    try:
+                        self.download_mp4(thumb_url, path)
+                    except:
+                        print("Directory not made")      
+                    t.sleep(0.2)
 
     def load_session(self, cookie_file:str) -> requests.Session:
         session = requests.Session()
@@ -176,7 +196,7 @@ def main():
     group.add_argument(
         "--load",
         nargs="?",
-        const="../../",
+        const="../../courses.json",
         default=None,
         metavar="OUTFILE",
         help="Fetch and save the course list (default: courses.json)",
@@ -187,6 +207,12 @@ def main():
         nargs=3,
         metavar=("SECTION_ID", "LECTURE_NUMBER", "PATH"),
         help="Download a specific lecture",
+    )
+
+    group.add_argument(
+        "--thumbnails",
+        metavar="OUTFILE",
+        help="Get the thumbnails for each active course",
     )
 
     args = parser.parse_args()
@@ -203,6 +229,11 @@ def main():
         print(f"Fetcher will watch {section_id}'s lecture {lecture_number} and save to {path}") 
         fetcher.watch(section_id, lecture_number, path)
 
+    elif args.thumbnails:
+        outpath = args.thumbnails
+        fetcher = Fetcher()
+        print(f"Fetcher will retrieve thumbnails for all active courses")
+        fetcher.get_thumbnails(outpath)
 
 if __name__ == "__main__":
     main()
