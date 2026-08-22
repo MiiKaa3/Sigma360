@@ -2,8 +2,6 @@ import base64
 import json 
 import time as t
 import requests
-from bs4 import BeautifulSoup
-import subprocess
 
 class Fetcher():
 
@@ -13,7 +11,9 @@ class Fetcher():
         self.session = self.load_session("cookies.json")
 
     def load(self):
-        self.check_auth()
+        if not self.check_auth():
+            print("Failed authentication")
+            return 1
 
         data = self.session.get("https://echo360.net.au/user/enrollments").json()
         loading_data = [] 
@@ -35,7 +35,11 @@ class Fetcher():
         
         return 0
         
-    def watch(self, section_id: str, lecture_number: str):
+    def watch(self, section_id: str, lecture_number: str, output_path:str):
+        if not self.check_auth():
+            print("Failed authentication")
+            return 1
+
         lessons = self._get_syllabus(section_id)
         target = lessons[int(lecture_number) - 1]
 
@@ -46,41 +50,27 @@ class Fetcher():
         path = f"https://content.echo360.net.au/0000.{institute}/{media_id}/1/"
 
         audio_url = path + "s0q1.mp4"
-        self.download_mp4(audio_url, "audio.mp4")
+        self.download_mp4(audio_url, output_path + "audio.mp4")
 
         screen1_url = path + "s1q1.mp4"
-        self.download_mp4(screen1_url, "s1.mp4")
+        self.download_mp4(screen1_url, output_path + "s1.mp4")
 
-        if len(medias) == 2:
-            screen2_url = path + "s2q1.mp4"
-            self.download_mp4(screen2_url, "s2.mp4")
-        else:
+        screen2_url = path + "s2q1.mp4"
+        has_screen2 = self.download_mp4(screen2_url, output_path + "s2.mp4")
+        if not has_screen2:
             print(f"Lecture {lecture_number}: single-screen recording, no s2.")
+
+        return 0
     
     def download_mp4(self, url: str, output_path: str):
         resp = self.session.get(url, stream=True)
+        if resp.status_code in (404, 403):
+            return False
         resp.raise_for_status()
         with open(output_path, "wb") as f:
             for chunk in resp.iter_content(chunk_size=1024*1024):
                 f.write(chunk)
-
-#    def make_lecture(self, video_url, audio_url, output_path):
-#        video_path = "video.mp4"
-#       audio_path = "audio.mp4"
-#
-#        self.download_mp4(video_url, video_path)
-#        self.download_mp4(audio_url, audio_path)
-#        cmd = [
-#            "ffmpeg",
-#            "-i", video_path,
-#            "-i", audio_path,
-#            "-map", "0:v:0",
-#            "-map", "1:a:0",
-#            "-c", "copy",
-#            "-bsf:a", "aac_adtstoasc",
-#            output_path,
-#        ]
-#        subprocess.run(cmd, check=True)        
+        return True
 
     def load_session(self, cookie_file:str) -> requests.Session:
         session = requests.Session()
@@ -133,7 +123,7 @@ class Fetcher():
         if expired:
             details = ", ".join(f"{k} (expired {int(now - v)}s ago)" for k, v in expired.items())
             print(f"Cookie(s) expired: {details}")
-            return 67
+            return False 
     
         if expiries:
             soonest_label, soonest_time = min(expiries.items(), key=lambda kv: kv[1])
@@ -144,19 +134,9 @@ class Fetcher():
         resp = self.session.get("https://echo360.net.au/user/enrollments", allow_redirects=True)
         if resp.status_code != 200 or "login" in resp.url.lower():
             print("Server rejected session — cookies invalid despite local expiry check passing.")
-            return 68
+            return False 
         
-        return 0
-
-    def _section_id_for_course(self, course_code: str) -> str:
-        with open("courses.json") as f:
-            courses = json.load(f)
-        matches = [c for c in courses if c["courseCode"] == course_code]
-        if not matches:
-            raise ValueError(f"No course found for code {course_code}")
-        # if multiple offerings exist (retaken courses), you'll want to disambiguate —
-        # e.g. most recent term, or raise if ambiguous
-        return matches[0]["url"]  # you named sectionId "url" in load()
+        return True
 
     def _get_syllabus(self, section_id: str) -> list:
         resp = self.session.get(f"https://echo360.net.au/section/{section_id}/syllabus")
@@ -183,33 +163,6 @@ def getYearSem(date: str) -> str:
         else:
             return year + " Semester " + sem
     
-def print_tree(obj, indent=0):
-    prefix = "    " * indent
-
-    if isinstance(obj, dict):
-        for key, value in obj.items():
-            print(f"{prefix}{key}:")
-            print_tree(value, indent + 1)
-
-    elif isinstance(obj, list):
-        for i, value in enumerate(obj):
-            print(f"{prefix}[{i}]:")
-            print_tree(value, indent + 1)
-
-    else:
-        print(f"{prefix}{obj}")
-
-def cookie_header(session: requests.Session, domain_filter: str = "echo360.net.au", name_filter:str = "") -> str:
-    """Build a raw Cookie header string from a requests session."""
-    pairs = [
-        f"{c.name}={c.value}"
-        for c in session.cookies
-        if ((domain_filter in c.domain) or (name_filter in name))
-    ]
-    return "; ".join(pairs)
-
-
-
 if __name__ == "__main__":
-    fetcher = Fetcher("STAT3004", "1")
-    fetcher.watch("faa364b6-a253-44fe-acac-1d1a438bf11a", "1")
+    fetcher = Fetcher("STAT3004", "2")
+    fetcher.watch("faa364b6-a253-44fe-acac-1d1a438bf11a", "2", "../test/")
