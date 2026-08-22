@@ -86,7 +86,7 @@ class Fetcher():
     
    # Third Functionality is to load the thumbnails into the relevant directories. 
     def get_thumbnails(self, outpath: str):
-        with open("../../courses.json") as f:
+        with open("courses.json") as f:
             all_courses = json.load(f)
         active_courses = [course for course in all_courses if course["isActive"]]
         
