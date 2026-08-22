@@ -7,11 +7,13 @@
 #include <cjson/cJSON.h>
 
 #include <stdio.h>
+#include <stdbool.h>
 #include <unistd.h>
 #include <string.h>
 #include <errno.h>
 #include <sys/types.h>
 #include <sys/wait.h>
+#include <fcntl.h>
 
 #define COL_BORDER_DIM    0x6272a4u
 #define COL_BORDER_ACTIVE 0xbd93f9u
@@ -20,6 +22,8 @@
 #define COL_SEL_FG        0xf8f8f2u
 
 #define DETAILS_MIN_COLS 10
+
+bool window_too_small = false;
 
 typedef struct {
     struct ncplane *frame;
@@ -249,11 +253,21 @@ int sigma360_tui(void) {
         }
 
         if (id == NCKEY_RESIZE) {
+            unsigned rows, cols;
+            if (notcurses_refresh(nc, &rows, &cols) != 0) {
+                continue;   /* couldn't re-fetch; try again on the next event */
+            }
+        
             destroy_panes(&panes);
             if (layout_panes(nc, &panes) != 0) {
-                break; // terminal too small probably
+                window_too_small = true;
+                continue;
             }
-            break;
+            window_too_small = false;
+        
+            draw_all(&panes, &nav);
+            notcurses_render(nc);
+            continue;
         }
 
         else if (id == 'j' || id == NCKEY_DOWN) {
@@ -290,8 +304,11 @@ static int sigma360_tui_watch(const char *course, int lecture) {
     char path[256];
     int n = snprintf(path, sizeof(path), "/%s/%d", (course != NULL) ? course : "unknown", lecture);
     if (n < 0 || (size_t)n >= sizeof(path)) {
-        return -1;
+        return -1;  // truncated or encoding error
     }
+
+    // TESTING
+    strcpy(path, "./src/test");
 
     pid_t pid = fork();
     if (pid < 0) {
@@ -300,7 +317,17 @@ static int sigma360_tui_watch(const char *course, int lecture) {
 
     if (pid == 0) {
         // Child
-        char *const argv[] = { "/home/mikey/dev/Sigma360/src/cmds/watch", "-l", "/home/mikey/dev/Sigma360/src/test", NULL };
+        int devnull = open("/dev/null", O_RDWR);
+        if (devnull < 0) {
+            _exit(127);
+        }
+        dup2(devnull, STDOUT_FILENO);
+        dup2(devnull, STDERR_FILENO);
+        if (devnull > STDERR_FILENO) {
+            close(devnull);
+        }
+
+        char *const argv[] = { "./src/cmds/watch", "-l", path, NULL };
         execv(argv[0], argv);
         _exit(127);
     }

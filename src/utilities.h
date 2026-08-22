@@ -1,6 +1,7 @@
 #ifndef SIGMA360_UTILITIES_H
 #define SIGMA360_UTILITIES_H
 
+#include <stdbool.h>
 #include <cjson/cJSON.h>
 
 int findcwd(char** buf);
