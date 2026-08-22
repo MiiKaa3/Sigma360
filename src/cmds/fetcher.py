@@ -93,7 +93,7 @@ class Fetcher():
         with open("courses.json") as f:
             all_courses = json.load(f)
         active_courses = [course for course in all_courses if course["isActive"]]
-        
+        print(active_courses) 
         institute = "60d4291f-70de-44d8-a332-d7c51983738d"
 
         for course in active_courses:
@@ -106,8 +106,8 @@ class Fetcher():
                     path = f"{outpath}/{code}/Lecture{i}/t.jpg"
                     try:
                         self.download_mp4(thumb_url, path)
-                    except:
-                        print("Directory not made")      
+                    except Exception as e:
+                        print(f"Failed for {path}: {e}")
                     t.sleep(0.2)
         
         return 0
