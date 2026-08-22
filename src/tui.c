@@ -208,7 +208,7 @@ int sigma360_tui(void) {
         fprintf(stderr, "[ERROR] Failed to construct tmp tree.\n");
         return 1;
     }
-    cJSON *json = get_json("./src/cmds/courses.json");
+    cJSON *json = get_courses_json("./src/cmds/courses.json");
     if (!json) {
         fprintf(stderr, "[ERROR] Failed to load JSON data.\n");
         return 1;
@@ -271,6 +271,13 @@ int sigma360_tui(void) {
             window_too_small = false;
         
             draw_all(&panes, &nav);
+            notcurses_render(nc);
+            continue;
+        }
+        if (window_too_small) {
+            struct ncplane *std = notcurses_stdplane(nc);
+            ncplane_erase(std);
+            ncplane_putstr_yx(std, 0, 0, "terminal too small");
             notcurses_render(nc);
             continue;
         }

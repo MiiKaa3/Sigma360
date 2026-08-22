@@ -106,12 +106,19 @@ char* buildLec(char* option, int num)
     return str;
 }
 
-cJSON *get_json(char* filename)
+cJSON *get_courses_json(char* filename)
 {
     FILE *file = fopen(filename, "r");
     if (!file) {
-        fprintf(stderr, "[ERROR] Failed to open %s\n", filename);
-        return NULL;
+        // fetch
+        if (system("( cd ./src/cmds ; python3 fetcher.py --load )") != 0) {
+            fprintf(stderr, "[ERROR] Failed to fetch courses.json\n");
+        }
+        file = fopen(filename, "r");
+        if (!file) {
+            fprintf(stderr, "[ERROR] Failed to open %s\n", filename);
+            return NULL;
+        }
     }
 
     fseek(file, 0, SEEK_END);

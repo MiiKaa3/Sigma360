@@ -1,6 +1,7 @@
 import base64
 import json 
 import time as t
+from datetime import datetime
 import requests
 import argparse
 
@@ -8,8 +9,9 @@ class Fetcher():
 
     def __init__(self):
         self.session = self.load_session("cookies.json")
-
-    def load(self):
+    
+    # Functionality that retrieves and makes courses.json
+    def load(self, outfile:str):
         if not self.check_auth():
             print("Failed authentication")
             return 1
@@ -17,6 +19,7 @@ class Fetcher():
         data = self.session.get("https://echo360.net.au/user/enrollments").json()
         loading_data = [] 
         sections = data["data"][0]["userSections"]
+        activeSem = getYearSem((str(datetime.now())[:10]))
         for d in sections:
             cc = d["courseCode"]
             loading_data.append(
@@ -25,15 +28,17 @@ class Fetcher():
                                 "url": d["sectionId"],
                                 "lessonCount": d["lessonCount"],
                                 "termId": d["termId"],
-                                "yearSem": getYearSem(data["data"][0]["termsById"][d["termId"]]["startDate"])
+                                "yearSem": getYearSem(data["data"][0]["termsById"][d["termId"]]["startDate"]),
+                                "isActive": getYearSem(data["data"][0]["termsById"][d["termId"]]["startDate"]) == activeSem
                                 }
                                 )
                              
-        with open("courses.json", "w") as f:
+        with open(outfile + "courses.json", "w") as f:
             json.dump(loading_data, f, indent=4)
         
         return 0
-        
+    
+    # Functionality that retrieves the video files for a certain lecture
     def watch(self, section_id: str, lecture_number: str, output_path:str):
         if not self.check_auth():
             print("Failed authentication")
@@ -70,6 +75,8 @@ class Fetcher():
             for chunk in resp.iter_content(chunk_size=1024*1024):
                 f.write(chunk)
         return True
+    
+    
 
     def load_session(self, cookie_file:str) -> requests.Session:
         session = requests.Session()
@@ -166,7 +173,7 @@ def main():
     parser = argparse.ArgumentParser(description="Sigma360 Echo360 fetcher")
     group = parser.add_mutually_exclusive_group(required=True)
 
-    group.add_argument("--load", action="store_true", help="Fetch and save the course list")
+    group.add_argument("--load", metavar=("OUTFILE"),  help="Fetch and save the course list")
     group.add_argument(
         "--watch",
         nargs=3,
@@ -177,9 +184,10 @@ def main():
     args = parser.parse_args()
 
     if args.load:
+        outfile = args.load
         fetcher = Fetcher()
-        print("Fetcher will load")
-        fetcher.load()
+        print(f"Fetcher will load, saving to {outfile}")
+        fetcher.load(outfile)
 
     elif args.watch:
         section_id, lecture_number, path = args.watch

@@ -12,7 +12,7 @@ int build_tree(char** root);
 
 char* buildArgs(char* option, char* var);
 
-cJSON *get_json(char* filename);
+cJSON *get_courses_json(char* filename);
 
 void sort_cjson_array(cJSON *array);
 
