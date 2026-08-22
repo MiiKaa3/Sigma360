@@ -115,7 +115,7 @@ cJSON *get_courses_json(char* filename)
     FILE *file = fopen(filename, "r");
     if (!file) {
         // fetch
-        if (system("( cd ./src/cmds ; python3 fetcher.py --load )") != 0) {
+        if (system("( cd ./src/cmds ; python3 fetcher.py --load ../../courses.json )") != 0) {
             fprintf(stderr, "[ERROR] Failed to fetch courses.json\n");
         }
         file = fopen(filename, "r");

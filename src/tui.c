@@ -208,7 +208,7 @@ int sigma360_tui(void) {
         fprintf(stderr, "[ERROR] Failed to construct tmp tree.\n");
         return 1;
     }
-    cJSON *json = get_courses_json("./src/cmds/courses.json");
+    cJSON *json = get_courses_json("./courses.json");
     if (!json) {
         fprintf(stderr, "[ERROR] Failed to load JSON data.\n");
         return 1;
