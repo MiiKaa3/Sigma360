@@ -140,7 +140,6 @@ int fetch_lecture(Parameters* params)
     findcwd(&buf);
     char* temp = "/src/cmds/fetcher.py";
     strcat(buf, temp);
-    fprintf(stderr, "%s\n", params->lecture);
     if (!fork()) {
         execlp("python3", "python3", buf, "--watch", params->lecture, NULL);
         // If exec fails

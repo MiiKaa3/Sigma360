@@ -220,6 +220,7 @@ static void draw_help(const pane_t *help) {
         { "j/down",  "down"  },
         { "k/up",    "up"    },
         { "l/right", "into"  },
+        { "shift+enter", "split screen"},
     };
  
     int x = 1;
@@ -257,6 +258,7 @@ static void draw_all(panes_t *panes, nav_t *nav) {
 
 static int sigma360_tui_watch(char* dir, bool split, char* time);
 static int sigma360_tui_save(struct notcurses *nc, nav_t *nav, const char *root);
+char* build_dir(char* root, char* url, int lectureNum);
 
 int sigma360_tui(void) {
     char *script;
@@ -380,16 +382,12 @@ pid_t pid = fork();
             nav_descend(&nav);
         } else if (id == 'h' || id == NCKEY_LEFT) {
             nav_ascend(&nav);
-        } else if (id == NCKEY_ENTER) {
+        } else if (id == NCKEY_ENTER && !ni.shift) {
             if (!nav_descend(&nav)) {
                 list_t *l = nav_current(&nav);
                 if (nav.depth > 0 && l->count > 0) {
-                    char* dir = strdup(root);
-                    expand_path(&dir);
-                    dir = buildArgs(dir, nav.path[nav.depth]->url);
-                    expand_path(&dir);
-                    char* lecture = buildLec("Lecture%d", (int)l->sel + 1);
-                    dir = buildArgs(dir, lecture);
+                    char* dir = build_dir(root, nav.path[nav.depth]->url, 
+                            (int)l->sel + 1);
                     sigma360_tui_watch(dir, false, "00:00:00");
                     free(dir);
                 }
@@ -397,6 +395,16 @@ pid_t pid = fork();
         } else if (id == 's') {
             sigma360_tui_image_clear();
             sigma360_tui_save(nc, &nav, root);
+        } else if (id == NCKEY_ENTER && ni.shift) {
+            if (!nav_descend(&nav)) {
+                list_t *l = nav_current(&nav);
+                if (nav.depth > 0 && l->count > 0) {
+                    char* dir = build_dir(root, nav.path[nav.depth]->url, 
+                            (int)l->sel + 1);
+                    sigma360_tui_watch(dir, true, "00:00:00");
+                    free(dir);
+                }
+            }
         } else {
             continue; // some unbound key; no redraw required
         }
@@ -751,4 +759,15 @@ static int sigma360_tui_save(struct notcurses *nc, nav_t *nav, const char *root)
     ncplane_destroy(box);
     free(name);
     return rc;
+}
+
+char* build_dir(char* root, char* url, int lectureNum)
+{
+    char* dir = strdup(root);
+    expand_path(&dir);
+    dir = buildArgs(dir, url);
+    expand_path(&dir);
+    char* lecture = buildLec("Lecture%d", lectureNum);
+    dir = buildArgs(dir, lecture);
+    return dir;
 }
