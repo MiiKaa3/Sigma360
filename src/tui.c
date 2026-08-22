@@ -5,6 +5,7 @@
 #include <notcurses/notcurses.h>
 #include <cjson/cJSON.h>
 
+#include <stdio.h>
 #include <unistd.h>
 #include <string.h>
 
@@ -26,6 +27,12 @@ typedef struct {
     pane_t current;
     pane_t preview;
 } panes_t;
+
+typedef enum {
+    ROLE_PARENT,
+    ROLE_CURRENT,
+    ROLE_PREVIEW,
+} panerole_t;
 
 // ------------------------------------------- //
 // Panes                                       //
@@ -128,7 +135,7 @@ static void clamp_view(list_t *l, unsigned rows) {
     }
 }
 
-static void draw_list(struct ncplane *p, list_t *l, bool active) {
+static void draw_list(struct ncplane *p, list_t *l, panerole_t role) {
     if (p == NULL) {
         return;
     }
@@ -151,16 +158,16 @@ static void draw_list(struct ncplane *p, list_t *l, bool active) {
 
     for (size_t i = l->top; i < l->count && (i - l->top) < rows; i++) {
         const entry_t *e = &l->items[i];
- 
+
         char line[512];
-        if (e->detail != NULL && cols > DETAILS_MIN_COLS) {
+        if (role == ROLE_CURRENT && cols > DETAILS_MIN_COLS && e->detail != NULL) {
             snprintf(line, sizeof line, "%s - %s", e->label, e->detail);
         } else {
             snprintf(line, sizeof line, "%s", (e->label != NULL) ? e->label : "");
         }
  
         if (i == l->sel) {
-            ncplane_set_bg_rgb(p, active ? COL_SEL_BG_ACTIVE : COL_SEL_BG_IDLE);
+            ncplane_set_bg_rgb(p, (role == ROLE_CURRENT) ? COL_SEL_BG_ACTIVE : COL_SEL_BG_IDLE);
             ncplane_set_fg_rgb(p, COL_SEL_FG);
         } else {
             ncplane_set_bg_default(p);
@@ -176,9 +183,9 @@ static void draw_list(struct ncplane *p, list_t *l, bool active) {
 }
 
 static void draw_all(panes_t *panes, nav_t *nav) {
-    draw_list(panes->parent.content,  nav_parent(nav),  false);
-    draw_list(panes->current.content, nav_current(nav), true);
-    draw_list(panes->preview.content, nav_preview(nav), false);
+    draw_list(panes->parent.content,  nav_parent(nav),  ROLE_PARENT);
+    draw_list(panes->current.content, nav_current(nav), ROLE_CURRENT);
+    draw_list(panes->preview.content, nav_preview(nav), ROLE_PREVIEW);
 }
 
 // ------------------------------------------- //
@@ -240,7 +247,7 @@ int sigma360_tui(void) {
             if (layout_panes(nc, &panes) != 0) {
                 break; // terminal too small probably
             }
-            continue;
+            break;
         }
 
         else if (id == 'j' || id == NCKEY_DOWN) {
