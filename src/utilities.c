@@ -67,7 +67,7 @@ int build_tree(char** root)
 
     cJSON* list = json->child;
     while (list) {
-        cJSON* code = cJSON_GetObjectItem(list, "courseCode");
+        cJSON* code = cJSON_GetObjectItem(list, "url");
         char* dir = buildArgs(tmp, code->valuestring);
         mkdir(dir, 0777);
         

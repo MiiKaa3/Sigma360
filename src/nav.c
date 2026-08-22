@@ -113,6 +113,7 @@ static int load_courses(nav_t *n) {
  
         entry_t *e = &n->root.children.items[n->root.children.count];
         e->label = strdup(code->valuestring);
+        e->url = strdup(url->valuestring);
         if (e->label == NULL) {
             return -1;
         }

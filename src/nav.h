@@ -23,6 +23,7 @@ typedef struct {
 
 struct entry {
     char         *label;
+    char         *url;
     char         *detail;
     char         *key;
     cJSON        *node;

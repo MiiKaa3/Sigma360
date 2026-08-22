@@ -201,7 +201,7 @@ static void draw_all(panes_t *panes, nav_t *nav) {
 // Main                                        //
 // ------------------------------------------- //
 
-static int sigma360_tui_watch(char* dir);
+static int sigma360_tui_watch(char* dir, bool split, char* time);
 
 int sigma360_tui(void) {
     cJSON *json = get_courses_json("./courses.json");
@@ -304,11 +304,11 @@ int sigma360_tui(void) {
                 if (nav.depth > 0 && l->count > 0) {
                     char* dir = strdup(root);
                     expand_path(&dir);
-                    dir = buildArgs(dir, nav.path[nav.depth]->label);
+                    dir = buildArgs(dir, nav.path[nav.depth]->url);
                     expand_path(&dir);
                     char* lecture = buildLec("Lecture%d", (int)l->sel + 1);
                     dir = buildArgs(dir, lecture);
-                    sigma360_tui_watch(dir);
+                    sigma360_tui_watch(dir, false, "00:00:00");
                     free(dir);
                 }
             }
@@ -337,7 +337,7 @@ int sigma360_tui(void) {
     return 0;
 }
 
-static int sigma360_tui_watch(char* dir)
+static int sigma360_tui_watch(char* dir, bool split, char* time)
 {
     pid_t pid = fork();
     if (pid < 0) {
@@ -351,7 +351,7 @@ static int sigma360_tui_watch(char* dir)
             _exit(127);
         }
         dup2(devnull, STDOUT_FILENO);
-        dup2(devnull, STDERR_FILENO);
+        /* dup2(devnull, STDERR_FILENO); */
         if (devnull > STDERR_FILENO) {
             close(devnull);
         }
@@ -360,11 +360,11 @@ static int sigma360_tui_watch(char* dir)
         findcwd(&cmd);
         strcat(cmd, "/src/cmds/watch");
         
-        char *const argv[] = { cmd, "-l", dir, NULL };
+        char* const argv[] = { cmd, "-l", dir, "-t", time, 
+            split ? "-s" : NULL, NULL };
         execv(argv[0], argv);
         _exit(127);
     }
-
     // Parent
     int status;
     while (waitpid(pid, &status, 0) < 0) {
@@ -372,10 +372,8 @@ static int sigma360_tui_watch(char* dir)
             return -1;
         }
     }
-
     if (WIFEXITED(status)) {
         return WEXITSTATUS(status);
     }
-
     return -1;
 }
