@@ -7,6 +7,7 @@
 #include <cjson/cJSON.h>
 
 #include <stdio.h>
+#include <stdbool.h>
 #include <unistd.h>
 #include <string.h>
 #include <errno.h>
@@ -21,6 +22,8 @@
 #define COL_SEL_FG        0xf8f8f2u
 
 #define DETAILS_MIN_COLS 10
+
+bool window_too_small = false;
 
 typedef struct {
     struct ncplane *frame;
@@ -250,11 +253,21 @@ int sigma360_tui(void) {
         }
 
         if (id == NCKEY_RESIZE) {
+            unsigned rows, cols;
+            if (notcurses_refresh(nc, &rows, &cols) != 0) {
+                continue;   /* couldn't re-fetch; try again on the next event */
+            }
+        
             destroy_panes(&panes);
             if (layout_panes(nc, &panes) != 0) {
-                break; // terminal too small probably
+                window_too_small = true;
+                continue;
             }
-            break;
+            window_too_small = false;
+        
+            draw_all(&panes, &nav);
+            notcurses_render(nc);
+            continue;
         }
 
         else if (id == 'j' || id == NCKEY_DOWN) {
