@@ -791,8 +791,6 @@ static int sigma360_tui_save(struct notcurses *nc, nav_t *nav, const char *root)
     free(name);
     return rc;
 }
-<<<<<<< Updated upstream
-=======
 
 static char *save_lecture_name(nav_t *nav) {
     if (nav->depth < 1) {
@@ -814,4 +812,3 @@ static char *save_lecture_name(nav_t *nav) {
     }
     return s;
 }
->>>>>>> Stashed changes
