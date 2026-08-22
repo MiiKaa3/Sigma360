@@ -286,7 +286,11 @@ pid_t pid = fork();
             printf("Child exited with status %d\n", WEXITSTATUS(status));
         } else {
             printf("Child did not exit normally\n");
+	    return 1;
         }
+	if (WEXITSTATUS(status) != 0) {
+	    return 1;
+	}
     }
 
     cJSON *json = get_courses_json("./courses.json");
