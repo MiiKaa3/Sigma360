@@ -7,8 +7,9 @@ Echo360 but as a terminal client/user interface
 - cJSON.h
 - notcurses
 - ffmpeg
+- python-requests
 
-`sudo pacman -S cjson notcurses ffmpeg`
+`sudo pacman -S cjson notcurses ffmpeg python-requests`
 
 ## Installation
 ```
