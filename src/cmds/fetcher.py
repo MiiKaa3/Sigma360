@@ -35,40 +35,52 @@ class Fetcher():
         
         return 0
         
-    def watch(self, video_url, audio_url, path):
-        self.check_auth()
-        
-         
-        self.download_mp4(video_url, video_path)
-        self.download_mp4(video_url, video_path)
+    def watch(self, section_id: str, lecture_number: str):
+        lessons = self._get_syllabus(section_id)
+        target = lessons[int(lecture_number) - 1]
 
-        self.make_lecture(video_url, audio_url, path)
-        
+        medias = target["lesson"]["medias"]
+        media_id = medias[0]["id"]  # mediaId is shared across sources for one lesson
 
+        institute = "60d4291f-70de-44d8-a332-d7c51983738d"
+        path = f"https://content.echo360.net.au/0000.{institute}/{media_id}/1/"
+
+        audio_url = path + "s0q1.mp4"
+        self.download_mp4(audio_url, "audio.mp4")
+
+        screen1_url = path + "s1q1.mp4"
+        self.download_mp4(screen1_url, "s1.mp4")
+
+        if len(medias) == 2:
+            screen2_url = path + "s2q1.mp4"
+            self.download_mp4(screen2_url, "s2.mp4")
+        else:
+            print(f"Lecture {lecture_number}: single-screen recording, no s2.")
+    
     def download_mp4(self, url: str, output_path: str):
         resp = self.session.get(url, stream=True)
         resp.raise_for_status()
         with open(output_path, "wb") as f:
             for chunk in resp.iter_content(chunk_size=1024*1024):
                 f.write(chunk)
-        
-    def make_lecture(self, video_url, audio_url, output_path):
-        video_path = "video.mp4"
-        audio_path = "audio.mp4"
 
-        self.download_mp4(video_url, video_path)
-        self.download_mp4(audio_url, audio_path)
-        cmd = [
-            "ffmpeg",
-            "-i", video_path,
-            "-i", audio_path,
-            "-map", "0:v:0",
-            "-map", "1:a:0",
-            "-c", "copy",
-            "-bsf:a", "aac_adtstoasc",
-            output_path,
-        ]
-        subprocess.run(cmd, check=True)        
+#    def make_lecture(self, video_url, audio_url, output_path):
+#        video_path = "video.mp4"
+#       audio_path = "audio.mp4"
+#
+#        self.download_mp4(video_url, video_path)
+#        self.download_mp4(audio_url, audio_path)
+#        cmd = [
+#            "ffmpeg",
+#            "-i", video_path,
+#            "-i", audio_path,
+#            "-map", "0:v:0",
+#            "-map", "1:a:0",
+#            "-c", "copy",
+#            "-bsf:a", "aac_adtstoasc",
+#            output_path,
+#        ]
+#        subprocess.run(cmd, check=True)        
 
     def load_session(self, cookie_file:str) -> requests.Session:
         session = requests.Session()
@@ -136,6 +148,21 @@ class Fetcher():
         
         return 0
 
+    def _section_id_for_course(self, course_code: str) -> str:
+        with open("courses.json") as f:
+            courses = json.load(f)
+        matches = [c for c in courses if c["courseCode"] == course_code]
+        if not matches:
+            raise ValueError(f"No course found for code {course_code}")
+        # if multiple offerings exist (retaken courses), you'll want to disambiguate —
+        # e.g. most recent term, or raise if ambiguous
+        return matches[0]["url"]  # you named sectionId "url" in load()
+
+    def _get_syllabus(self, section_id: str) -> list:
+        resp = self.session.get(f"https://echo360.net.au/section/{section_id}/syllabus")
+        resp.raise_for_status()
+        return resp.json()["data"]
+
 def getYearSem(date: str) -> str:
         y, m, d = date.split("-")
         
@@ -184,14 +211,5 @@ def cookie_header(session: requests.Session, domain_filter: str = "echo360.net.a
 
 
 if __name__ == "__main__":
-    fetcher = Fetcher("STAT3004", "12")
-    # resp = fetcher.session.get("https://content.echo360.net.au/0000.60d4291f-70de-44d8-a332-d7c51983738d/7bee4707-6a80-4cd1-b2fe-b88519a4ff15/1/s2q1.m3u8?x-uid=0166278b-7f37-4d8a-8672-a0c464c95943&x-instid=60d4291f-70de-44d8-a332-d7c51983738d&x-lid=G_8d86e9f9-f41c-4168-91ac-5254f1578d0e_faa364b6-a253-44fe-acac-1d1a438bf11a_2026-07-27T12%3A00%3A00.000_2026-07-27T13%3A00%3A00.000&x-sid=faa364b6-a253-44fe-acac-1d1a438bf11a&x-mid=7bee4707-6a80-4cd1-b2fe-b88519a4ff15&x-act=videoView&x-src=desktop")  # your existing session, cookies attached
-    # print(resp.text)
-    # fetcher.watch("https://content.echo360.net.au/0000.60d4291f-70de-44d8-a332-d7c51983738d/7bee4707-6a80-4cd1-b2fe-b88519a4ff15/1/s2q1.mp4?x-uid=0166278b-7f37-4d8a-8672-a0c464c95943&x-instid=60d4291f-70de-44d8-a332-d7c51983738d&x-lid=G_8d86e9f9-f41c-4168-91ac-5254f1578d0e_faa364b6-a253-44fe-acac-1d1a438bf11a_2026-07-27T12%3A00%3A00.000_2026-07-27T13%3A00%3A00.000&x-sid=faa364b6-a253-44fe-acac-1d1a438bf11a&x-mid=7bee4707-6a80-4cd1-b2fe-b88519a4ff15&x-act=videoView&x-src=desktop", "https://content.echo360.net.au/0000.60d4291f-70de-44d8-a332-d7c51983738d/7bee4707-6a80-4cd1-b2fe-b88519a4ff15/1/s0q1.mp4?x-uid=0166278b-7f37-4d8a-8672-a0c464c95943&x-instid=60d4291f-70de-44d8-a332-d7c51983738d&x-lid=G_8d86e9f9-f41c-4168-91ac-5254f1578d0e_faa364b6-a253-44fe-acac-1d1a438bf11a_2026-07-27T12%3A00%3A00.000_2026-07-27T13%3A00%3A00.000&x-sid=faa364b6-a253-44fe-acac-1d1a438bf11a&x-mid=7bee4707-6a80-4cd1-b2fe-b88519a4ff15&x-act=videoView&x-src=desktop", "output.mp4")
-    #url = f"https://echo360.net.au/section/faa364b6-a253-44fe-acac-1d1a438bf11a/home"
-    #r = fetcher.session.get(url)
-    fetcher.download_mp4("https://content.echo360.net.au/0000.60d4291f-70de-44d8-a332-d7c51983738d/7bee4707-6a80-4cd1-b2fe-b88519a4ff15/1/s1q1.mp4?x-uid=0166278b-7f37-4d8a-8672-a0c464c95943&x-instid=60d4291f-70de-44d8-a332-d7c51983738d&x-lid=G_8d86e9f9-f41c-4168-91ac-5254f1578d0e_faa364b6-a253-44fe-acac-1d1a438bf11a_2026-07-27T12%3A00%3A00.000_2026-07-27T13%3A00%3A00.000&x-sid=faa364b6-a253-44fe-acac-1d1a438bf11a&x-mid=7bee4707-6a80-4cd1-b2fe-b88519a4ff15&x-act=videoView&x-src=desktop", "screen2.mp4")
-    #print(r.status_code)
-    #print(r.url)
-    #print(r.headers.get("content-type"))
-    #print(r.text[:2000])
+    fetcher = Fetcher("STAT3004", "1")
+    fetcher.watch("faa364b6-a253-44fe-acac-1d1a438bf11a", "1")

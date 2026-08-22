@@ -2,12 +2,16 @@
 #include "nav.h"
 #include "utilities.h"
 
+#include <notcurses/nckeys.h>
 #include <notcurses/notcurses.h>
 #include <cjson/cJSON.h>
 
 #include <stdio.h>
 #include <unistd.h>
 #include <string.h>
+#include <errno.h>
+#include <sys/types.h>
+#include <sys/wait.h>
 
 #define COL_BORDER_DIM    0x6272a4u
 #define COL_BORDER_ACTIVE 0xbd93f9u
@@ -192,6 +196,8 @@ static void draw_all(panes_t *panes, nav_t *nav) {
 // Main                                        //
 // ------------------------------------------- //
 
+static int sigma360_tui_watch(const char *course, int lecture);
+
 int sigma360_tui(void) {
     cJSON *json = get_json("./src/cmds/courses.json");
     if (!json) {
@@ -254,10 +260,17 @@ int sigma360_tui(void) {
             nav_move(&nav, 1);
         } else if (id == 'k' || id == NCKEY_UP) {
             nav_move(&nav, -1);
-        } else if (id == 'l' || id == NCKEY_RIGHT || id == NCKEY_ENTER) {
+        } else if (id == 'l' || id == NCKEY_RIGHT) {
             nav_descend(&nav);
-        } else if (id == 'h' || id == NCKEY_LEFT || id == NCKEY_BACKSPACE) {
+        } else if (id == 'h' || id == NCKEY_LEFT) {
             nav_ascend(&nav);
+        } else if (id == NCKEY_ENTER) {
+            if (!nav_descend(&nav)) {
+                list_t *l = nav_current(&nav);
+                if (nav.depth > 0 && l->count > 0) {
+                    sigma360_tui_watch(nav.path[nav.depth]->label, (int)l->sel + 1);
+                }
+            }
         } else {
             continue; // some unbound key; no redraw required
         }
@@ -271,4 +284,38 @@ int sigma360_tui(void) {
     nav_free(&nav);
     cJSON_Delete(json);
     return 0;
+}
+
+static int sigma360_tui_watch(const char *course, int lecture) {
+    char path[256];
+    int n = snprintf(path, sizeof(path), "/%s/%d", (course != NULL) ? course : "unknown", lecture);
+    if (n < 0 || (size_t)n >= sizeof(path)) {
+        return -1;
+    }
+
+    pid_t pid = fork();
+    if (pid < 0) {
+        return -1;
+    }
+
+    if (pid == 0) {
+        // Child
+        char *const argv[] = { "/home/mikey/dev/Sigma360/src/cmds/watch", "-l", "/home/mikey/dev/Sigma360/src/test", NULL };
+        execv(argv[0], argv);
+        _exit(127);
+    }
+
+    // Parent
+    int status;
+    while (waitpid(pid, &status, 0) < 0) {
+        if (errno != EINTR) {
+            return -1;
+        }
+    }
+
+    if (WIFEXITED(status)) {
+        return WEXITSTATUS(status);
+    }
+
+    return -1;
 }
