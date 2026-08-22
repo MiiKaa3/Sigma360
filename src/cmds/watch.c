@@ -3,6 +3,8 @@
 #include <stdbool.h>
 #include <string.h>
 #include <ctype.h>
+#include <unistd.h>
+#include <sys/wait.h>
 #include "../utilities.h"
 
 /*  STRUCTS  */
@@ -49,26 +51,25 @@ const char* const help =
 
 int parse(char** argv, Parameters* params);
 bool check_time_arg(char* time);
-void buildArgs(char* option, char* var);
 int play_lecture(Parameters* params);
-char* buildArgs(char* option, char* var);
+int fetch_lecture(Parameters* params);
 
 /*  FUNCTIONALITY  */
 
 int main(int argc, char** argv)
 {
     int exitCode = 0;
-    Options options;
-    Parameters params = { .options = options};
+    Options options = {.startTime = "00:00:00"};
+    Parameters params = {.options = options};
 
     if ((exitCode = parse(argv, &params))) {
         return exitCode;
     }
-    if ((exitCode = fetch_lecture(&params))) {
-        return exitCode;
-    }
+    /* if ((exitCode = fetch_lecture(&params))) { */
+    /*     return exitCode; */
+    /* } */
     if ((exitCode = play_lecture(&params))) {
-
+        return exitCode;
     }
 
     return 0;
@@ -81,7 +82,6 @@ int parse(char** argv, Parameters* params)
         if (!strcmp(argv[0], "-l") && argv[1]) {
             params->lecture = argv[1];
             argv++;
-        }
         } else if (!strcmp(argv[0], "-s")) {
             params->options.splitScreen = true;
         } else if (!strcmp(argv[0], "-t") && argv[1]) {
@@ -94,7 +94,6 @@ int parse(char** argv, Parameters* params)
         } else if (!strcmp(argv[0], "-c") && argv[1]) {
             params->course = argv[1];
             argv++;
-        }
         } else {
             fprintf(stderr, usage);
             return BAD_USAGE;
@@ -140,7 +139,7 @@ int fetch_lecture(Parameters* params)
     strcat(buf, temp);
 
     if (!fork()) {
-        execlp("python3", "python3", 
+        execlp("python3", "python3", "fetcher"
                 "--watch", buf, params->course, params->lecture, NULL);
         // If exec fails
         return BAD_FETCH;
@@ -153,27 +152,25 @@ int fetch_lecture(Parameters* params)
 int play_lecture(Parameters* params)
 {
     char* tmpPath = strdup(params->lecture);
-    tmpPath = realloc(tmpPath, (strlen(tmpPath)+strlen("%s")+1) * sizeof(char));
-    strcat(tmpPath, "%s");
+    tmpPath = realloc(tmpPath, 
+            (strlen(tmpPath)+strlen("/%s")+1) * sizeof(char));
+    strcat(tmpPath, "/%s");
 
     char* v2Path = buildArgs(tmpPath, "v2.mp4");
-    char* aud = buildArgs(tmpPath, "audio.mp3");
-    free(tmpPath);
+    char* aud = buildArgs(tmpPath, "audio.mp4");
 
     char* v1 = buildArgs(tmpPath, "v1.mp4");
     char* time = buildArgs("--start=%s", params->options.startTime);
     char* audio = buildArgs("--audio-file=%s", aud);
     char* v2 = buildArgs("--external-file=%s", v2Path);
+    free(tmpPath);
     free(v2Path);
     free(aud);
 
     if (!fork()) {
-        if (params->options.splitScreen && params->options.startTime) {
-            execlp("mpv", "mpv", v1, audio, time, v2,
-                    "--lavfi-complex=\"[vid1][vid2]hstack[vo]\"", NULL);
-        } else if (params->options.splitScreen) {
+        if (params->options.splitScreen) {
             execlp("mpv", "mpv", v1, audio, time, v2, 
-                    "--lavfi-complex=\"[vid1][vid2]hstack[vo]\"", NULL);
+                    "--lavfi-complex=[vid1][vid2]hstack[vo]", NULL);
         } else if (params->options.startTime) {
             execlp("mpv", "mpv", v1, audio, time, NULL);
         } else {
