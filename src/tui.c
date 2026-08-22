@@ -21,8 +21,11 @@
 #define COL_SEL_BG_ACTIVE 0x2f7482u
 #define COL_SEL_BG_IDLE   0x44475au
 #define COL_SEL_FG        0xf8f8f2u
+#define COL_HELP_KEY      0xbd93f9u
+#define COL_HELP_DESC     0x91bbffu
 
 #define DETAILS_MIN_COLS 10
+#define HELP_ROWS 3
 
 bool window_too_small = false;
 
@@ -35,6 +38,7 @@ typedef struct {
     pane_t parent;
     pane_t current;
     pane_t preview;
+    pane_t help;
 } panes_t;
 
 typedef enum {
@@ -62,6 +66,7 @@ static void destroy_panes(panes_t *panes) {
     destroy_pane(&panes->parent);
     destroy_pane(&panes->current);
     destroy_pane(&panes->preview);
+    destroy_pane(&panes->help);
 }
 
 static int make_pane(struct ncplane *std, pane_t *pane, int y, int x, unsigned rows, unsigned cols, uint32_t border_rgb) {
@@ -107,14 +112,16 @@ static int layout_panes(struct notcurses *nc, panes_t *panes) {
     unsigned rows, cols;
     ncplane_dim_yx(std, &rows, &cols);
 
+    unsigned bodyh = rows - HELP_ROWS;
     unsigned unit = cols / 8;
     unsigned parentw = unit;
     unsigned currentw = unit * 4;
     unsigned previeww = cols - parentw - currentw;
 
-    if (make_pane(std, &panes->parent,  0, 0, rows, cols,  COL_BORDER_DIM) != 0 ||
-        make_pane(std, &panes->current, 0, (int)parentw, rows, currentw, COL_BORDER_ACTIVE) != 0 ||
-        make_pane(std, &panes->preview, 0, (int)(parentw + currentw), rows, previeww, COL_BORDER_DIM) != 0) {
+    if (make_pane(std, &panes->parent,  0, 0, bodyh, parentw,  COL_BORDER_DIM) != 0 ||
+        make_pane(std, &panes->current, 0, (int)parentw, bodyh, currentw, COL_BORDER_ACTIVE) != 0 ||
+        make_pane(std, &panes->preview, 0, (int)(parentw + currentw), bodyh, previeww, COL_BORDER_DIM) != 0 ||
+        make_pane(std, &panes->help, (int)bodyh, 0, HELP_ROWS, cols, COL_BORDER_DIM) != 0) {
         destroy_panes(panes);
         return -1;
     }
@@ -191,10 +198,50 @@ static void draw_list(struct ncplane *p, list_t *l, panerole_t role) {
     ncplane_set_fg_default(p);
 }
 
+static void draw_help(const pane_t *help) {
+    struct ncplane *p = help->content;
+    if (p == NULL) {
+        return;
+    }
+    ncplane_erase(p);
+ 
+    static const struct { const char *key; const char *desc; } binds[] = {
+        { "q/esc",   "quit"  },
+        { "enter",   "watch" },
+        { "s",       "save"  },
+        { "h/left",  "back"  },
+        { "j/down",  "down"  },
+        { "k/up",    "up"    },
+        { "l/right", "into"  },
+    };
+ 
+    int x = 1;
+    for (size_t i = 0; i < sizeof binds / sizeof *binds; i++) {
+        int w;
+ 
+        ncplane_set_fg_rgb(p, COL_HELP_KEY);
+        w = ncplane_putstr_yx(p, 0, x, binds[i].key);
+        if (w < 0) {
+            break; // ran out of pane width
+        }
+        x += w;
+ 
+        ncplane_set_fg_rgb(p, COL_HELP_DESC);
+        w = ncplane_printf_yx(p, 0, x, " %s   ", binds[i].desc);
+        if (w < 0) {
+            break;
+        }
+        x += w;
+    }
+ 
+    ncplane_set_fg_default(p);
+}
+
 static void draw_all(panes_t *panes, nav_t *nav) {
     draw_list(panes->parent.content,  nav_parent(nav),  ROLE_PARENT);
     draw_list(panes->current.content, nav_current(nav), ROLE_CURRENT);
     draw_list(panes->preview.content, nav_preview(nav), ROLE_PREVIEW);
+    draw_help(&panes->help);
 }
 
 // ------------------------------------------- //
@@ -360,8 +407,7 @@ static int sigma360_tui_watch(char* dir, bool split, char* time)
         findcwd(&cmd);
         strcat(cmd, "/src/cmds/watch");
         
-        char* const argv[] = { cmd, "-l", dir, "-t", time, 
-            split ? "-s" : NULL, NULL };
+        char* const argv[] = { cmd, "-l", dir, "-t", time, split ? "-s" : NULL, NULL };
         execv(argv[0], argv);
         _exit(127);
     }
