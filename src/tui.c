@@ -1,6 +1,7 @@
 #include "tui.h"
 #include "nav.h"
 #include "utilities.h"
+#include "tui_image.h"
 
 #include <notcurses/nckeys.h>
 #include <notcurses/notcurses.h>
@@ -216,6 +217,8 @@ int sigma360_tui(void) {
         return 1;
     }
 
+    // THUMBNAILS FETCHER HERE
+
     nav_t nav;
     if (nav_init(&nav, json) != 0) {
         fprintf(stderr, "[ERROR] Failed to build navigation tree.\n");
@@ -226,7 +229,7 @@ int sigma360_tui(void) {
     struct notcurses_options opts = {0};
     opts.flags = NCOPTION_SUPPRESS_BANNERS;
 
-    struct notcurses *nc = notcurses_core_init(&opts, NULL);
+    struct notcurses *nc = notcurses_init(&opts, NULL);
     if (nc == NULL) {
         nav_free(&nav);
         cJSON_Delete(json);
@@ -312,6 +315,16 @@ int sigma360_tui(void) {
         } else {
             continue; // some unbound key; no redraw required
         }
+
+        if (nav.depth > 0 && nav.depth > 0 && nav_current(&nav)->count > 0) {
+            char imgfile[128];
+            
+            sprintf(imgfile, "./test_tn/%lu.png", 1 + nav_current(&nav)->sel % 3);
+            sigma360_tui_image_show(panes.preview.content, imgfile);
+        } else {
+            sigma360_tui_image_clear();
+        }
+        notcurses_render(nc);
 
         draw_all(&panes, &nav);
         notcurses_render(nc);

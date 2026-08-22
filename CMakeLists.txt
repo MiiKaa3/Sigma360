@@ -17,13 +17,14 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 find_package(cJSON REQUIRED)
 find_package(PkgConfig REQUIRED)
-pkg_check_modules(NOTCURSES REQUIRED IMPORTED_TARGET notcurses-core)
+pkg_check_modules(NOTCURSES REQUIRED IMPORTED_TARGET notcurses)
 
 add_executable(sigma360
     src/main.c
     src/tui.c
     src/nav.c
     src/utilities.c
+    src/tui_image.c
 )
 
 target_include_directories(sigma360 PRIVATE src)
