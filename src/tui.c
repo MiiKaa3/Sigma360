@@ -200,7 +200,7 @@ static void draw_all(panes_t *panes, nav_t *nav) {
 // Main                                        //
 // ------------------------------------------- //
 
-static int sigma360_tui_watch(const char *course, int lecture);
+static int sigma360_tui_watch(char* dir);
 
 int sigma360_tui(void) {
     char* root;
@@ -294,13 +294,14 @@ int sigma360_tui(void) {
             if (!nav_descend(&nav)) {
                 list_t *l = nav_current(&nav);
                 if (nav.depth > 0 && l->count > 0) {
-                    char* dir = strcpy(root);
-                    expand_dir(&dir);
+                    char* dir = strdup(root);
+                    expand_path(&dir);
                     dir = buildArgs(dir, nav.path[nav.depth]->label);
-                    expand_dir(&dir);
+                    expand_path(&dir);
                     char* lecture = buildLec("Lecture%d", (int)l->sel + 1);
                     dir = buildArgs(dir, lecture);
                     sigma360_tui_watch(dir);
+                    free(dir);
                 }
             }
         } else {
@@ -318,7 +319,7 @@ int sigma360_tui(void) {
     return 0;
 }
 
-static int sigma360_tui_watch(const char* dir)
+static int sigma360_tui_watch(char* dir)
 {
     pid_t pid = fork();
     if (pid < 0) {

@@ -21,6 +21,7 @@ int findcwd(char** buf)
     }
     *buf = malloc(size * sizeof(char));
     getcwd(*buf, size);
+    printf("%ld\n", size);
     return 0;
 }
 
@@ -49,7 +50,14 @@ int read_file(char* dir, char** file)
 int build_tree(char** root)
 {
     char* file;
-    read_file("cmds/courses.json", &file);
+    char* jDir;
+    if (findcwd(&jDir)) {
+        return -1;
+    }
+    printf(jDir);
+    strcat(jDir, "/courses.json");
+    printf(jDir);
+    read_file(jDir, &file);
     char template[] = "/tmp/sigma_XXXXXX";
     *root = mkdtemp(template);
 

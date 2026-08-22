@@ -1,7 +1,6 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "cli.h"
 #include "tui.h"
 
 void version_msg(void);
@@ -13,8 +12,6 @@ int main(int argc, char **argv) {
             version_msg();
         } else if (strcmp(argv[1], "--help") == 0) {
             usage_msg();
-        } else if (strcmp(argv[1], "--cli") == 0) {
-            sigma360_cli();
         } else if (strcmp(argv[1], "--tui") == 0) {
             sigma360_tui();
         } else {

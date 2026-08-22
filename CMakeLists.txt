@@ -21,7 +21,6 @@ pkg_check_modules(NOTCURSES REQUIRED IMPORTED_TARGET notcurses-core)
 
 add_executable(sigma360
     src/main.c
-    src/cli.c
     src/tui.c
     src/nav.c
     src/utilities.c
