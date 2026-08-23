@@ -8,9 +8,7 @@ Sigma360 is an app which enables students to watch their Echo360 lectures from t
 
 Built in C (with a little help from python) with [notcurses](https://github.com/dankamongmen/notcurses).
 
-## Requirements
-- mpv
-- cJSON.h
+# Requirements
 
 ### Build
 
@@ -28,17 +26,17 @@ Built in C (with a little help from python) with [notcurses](https://github.com/
 
 ### Arch 
 
-We assume you're on Arch (btw) but this should work on any Linux systems with these dependencies.
+We assume you're on Arch (btw) but this app should work on any Linux system (maybe even MacOS?) with these dependencies.
 ```
 $ sudo pacman -S mpv cjson notcurses ffmpeg python-requests python-playwright
 $ playwright install chromium
 ```
 
-### Terminal
+## Terminal
 
 Sigma360 was tested mostly in Kitty and Konsole, but most modern terminal emulators should do.
 
-## Installation
+# Installation
 
 ```
 git clone https://github.com/MiiKaa3/Sigma360.git
@@ -48,7 +46,7 @@ cmake --build build
 ```
 You could symlink the binary if you want!
 
-## Usage
+# Usage
 
 Run from the project root:
 
@@ -56,7 +54,7 @@ Run from the project root:
 ./build/sigma360
 ```
 
-### Navigation
+## Navigation
 
 Sigma360 uses a three-pane miller-column layout. You can navigate around, 
 
@@ -67,12 +65,21 @@ Sigma360 uses a three-pane miller-column layout. You can navigate around,
 | `l` / `→` | Go forward |
 | `h` / `←` | Go back |
 | `Enter` | Play selected lecture |
+| `Shift+Enter` | Play selected lecture from timestamp|
 | `s` | Save selected lecture to directory
 | `q` | Quit |
 
 Selecting a lecture launches it in mpv. Quitting mpv returns you to the TUI.
 
+# Screenshots
+
+![](./resources/one.png)
+<br>
+![](./resources/two.png)
+<br>
+![](./resources/three.png)
+
 <hr><br>
 <div align=center>
-<img src="https://uqcs.org/img/logo/logo-long-white.svg" alt="drawing" width="200"/>
+<img src="https://uqcs.org/img/logo/logo-long-white.svg" alt="drawing" width="50%"/>
 </align>
