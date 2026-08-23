@@ -303,6 +303,14 @@ pid_t pid = fork();
     }
 
     // THUMBNAILS FETCHER HERE
+    pid_t thumb = fork();
+    if (!thumb) {
+        char* cmd;
+        findcwd(&cmd);
+        strcat(cmd, "/src/cmds/fetcher.py");
+        execlp("python3", "python3", cmd, "--thumbnail", root, NULL);
+        exit(-1);
+    }
 
     nav_t nav;
     if (nav_init(&nav, json) != 0) {
@@ -344,9 +352,10 @@ pid_t pid = fork();
         }
         if (id == 'q' || id == NCKEY_ESC) {
             if (!fork()) {
-                execlp("rm", "rm", "-rf", "/tmp/sigma_*", NULL);
+                execlp("rm", "rm", "-rf", root, NULL);
             }
             wait(NULL);
+            waitpid(thumb, NULL, 0);
             break; // quiting out
         }
 
@@ -416,13 +425,11 @@ pid_t pid = fork();
                     (int)nav_current(&nav)->sel + 1);
             char temp[4096];
             sprintf(temp, "%s/t.jpg", dir);
-            fprintf(stderr, "Trying to display %s.\n", temp);
             if (access(temp, F_OK) == 0) {
                 sigma360_tui_image_show(panes.preview.content, temp);
             } else {
-                /* sprintf(imgfile, "./previewless.png"); */
-                fprintf(stderr, "Couldn't find preview.\n");
-                /* sigma360_tui_image_show(panes.preview.content, imgfile); */
+                sprintf(imgfile, "./previewless.jpg");
+                sigma360_tui_image_show(panes.preview.content, imgfile);
             }
             free(dir);
         } else {

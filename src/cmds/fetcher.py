@@ -247,7 +247,6 @@ def main():
     elif args.thumbnails:
         outpath = args.thumbnails
         fetcher = Fetcher()
-        print(f"Fetcher will retrieve thumbnails for all active courses")
         code = fetcher.get_thumbnails(outpath)
 
     return code
