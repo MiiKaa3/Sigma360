@@ -401,30 +401,33 @@ int sigma360_tui(void) {
                 if (nav.depth > 0 && l->count > 0) {
                     char* dir = build_dir(root, nav.path[nav.depth]->url, (int)l->sel + 1);
 
-                    struct ncplane *std = notcurses_stdplane(nc);
-                    unsigned r, c;
-                    ncplane_dim_yx(std, &r, &c);
-                    unsigned bw = (c > 40) ? 40 : c;
-                    struct ncplane_options bo = {
-                        .y = (int)(r - 3) / 2, .x = (int)(c - bw) / 2, .rows = 3, .cols = bw,
-                    };
-                    struct ncplane *box = ncplane_create(std, &bo);
-                    if (box) {
-                        uint64_t ch = 0;
-                        ncchannels_set_fg_rgb(&ch, COL_SEL_FG);
-                        ncchannels_set_bg_rgb(&ch, COL_MODAL_BG);
-                        ncplane_set_base(box, " ", 0, ch);
-                        ncchannels_set_fg_rgb(&ch, COL_BORDER_ACTIVE);
-                        ncplane_perimeter_rounded(box, 0, ch, 0);
-                        ncplane_set_fg_rgb(box, COL_HELP_DESC);
-                        ncplane_set_bg_rgb(box, COL_MODAL_BG);
-                        ncplane_putstr_yx(box, 1, 2, "downloading...");
-                        notcurses_render(nc);
+                    if (is_dir_empty(dir)) {
+                        struct ncplane *std = notcurses_stdplane(nc);
+                        unsigned r, c;
+                        ncplane_dim_yx(std, &r, &c);
+                        unsigned bw = (c > 40) ? 40 : c;
+                        struct ncplane_options bo = {
+                            .y = (int)(r - 3) / 2, .x = (int)(c - bw) / 2, .rows = 3, .cols = bw,
+                        };
+                        struct ncplane *box = ncplane_create(std, &bo);
+                        if (box) {
+                            uint64_t ch = 0;
+                            ncchannels_set_fg_rgb(&ch, COL_SEL_FG);
+                            ncchannels_set_bg_rgb(&ch, 0x000000);
+                            ncplane_set_base(box, " ", 0, ch);
+                            ncchannels_set_fg_rgb(&ch, COL_BORDER_ACTIVE);
+                            ncplane_perimeter_rounded(box, 0, ch, 0);
+                            ncplane_set_fg_rgb(box, COL_HELP_DESC);
+                            ncplane_set_bg_rgb(box, 0x000000);
+                            ncplane_putstr_yx(box, 1, 2, "downloading...");
+                            notcurses_render(nc);
+                        }
+                        sigma360_tui_watch(dir, false, "00:00:00");
+
+                        if (box) ncplane_destroy(box);
+                    } else {
+                        sigma360_tui_watch(dir, false, "00:00:00");
                     }
-
-                    sigma360_tui_watch(dir, false, "00:00:00");
-
-                    if (box) ncplane_destroy(box);
                     free(dir);
                 }
             }
