@@ -26,17 +26,23 @@ class Fetcher():
         activeSem = getYearSem((str(datetime.now())[:10]))
         for d in sections:
             cc = d["courseCode"]
+            currentSem = getYearSem(data["data"][0]["termsById"][d["termId"]]["startDate"])
+            if currentSem == activeSem:
+                syllabus = self._get_syllabus(d["sectionId"])
+                lessonCount = sum(1 for lesson in syllabus if len(lesson["lesson"]["medias"]) > 0)
+            else:
+                lessonCount = d["lessonCount"]
             loading_data.append(
                                 {"courseCode": cc,
                                 "courseName": d["courseName"],
                                 "url": d["sectionId"],
-                                "lessonCount": d["lessonCount"],
+                                "lessonCount": lessonCount,
                                 "termId": d["termId"],
-                                "yearSem": getYearSem(data["data"][0]["termsById"][d["termId"]]["startDate"]),
-                                "isActive": getYearSem(data["data"][0]["termsById"][d["termId"]]["startDate"]) == activeSem
+                                "yearSem": currentSem,
+                                "isActive": currentSem == activeSem
                                 }
                                 )
-                             
+                
         with open(outfile, "w") as f:
             json.dump(loading_data, f, indent=4)
         
