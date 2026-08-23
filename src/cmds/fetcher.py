@@ -51,7 +51,6 @@ class Fetcher():
     # Functionality that retrieves the video files for a certain lecture
     def watch(self, output_path:str):
         if not self.check_auth():
-            print("Failed authentication")
             return 1
         
         section_id, lecture_number = output_path.split("/")[-2:]
@@ -63,7 +62,6 @@ class Fetcher():
 
         medias = target["lesson"]["medias"]
         if len(medias) == 0:
-            print("Lecture doesn't exist yet")
             return 2
 
         media_id = medias[0]["id"]  # mediaId is shared across sources for one lesson
@@ -99,7 +97,6 @@ class Fetcher():
         with open("courses.json") as f:
             all_courses = json.load(f)
         active_courses = [course for course in all_courses if course["isActive"]]
-        print(active_courses) 
         institute = "60d4291f-70de-44d8-a332-d7c51983738d"
 
         for course in active_courses:
