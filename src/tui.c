@@ -116,15 +116,16 @@ static int layout_panes(struct notcurses *nc, panes_t *panes) {
     unsigned rows, cols;
     ncplane_dim_yx(std, &rows, &cols);
 
-    if (rows < HELP_ROWS + 3 || cols < 8) {
+    unsigned parentw = 55;
+
+    if (rows < HELP_ROWS + 3 || cols < parentw + 8) {
         return -1; // not enough space for the columns plus the help bar
     }
 
     unsigned bodyh = rows - HELP_ROWS;
-    unsigned unit = cols / 8;
-    unsigned parentw = unit;
-    unsigned currentw = unit * 4;
-    unsigned previeww = cols - parentw - currentw;
+    unsigned remaining = cols - parentw;
+    unsigned currentw = (remaining * 2) / 5;
+    unsigned previeww = remaining - currentw;
 
     if (make_pane(std, &panes->parent,  0, 0, bodyh, parentw,  COL_BORDER_DIM) != 0 ||
         make_pane(std, &panes->current, 0, (int)parentw, bodyh, currentw, COL_BORDER_ACTIVE) != 0 ||
@@ -206,6 +207,32 @@ static void draw_list(struct ncplane *p, list_t *l, panerole_t role) {
     ncplane_set_fg_default(p);
 }
 
+static void draw_parent_pane(struct ncplane *p, nav_t *nav) {
+    if (p == NULL) return;
+    ncplane_erase(p);
+
+    if (nav->depth == 0) {
+        static const char *art[] = {
+            "   _____ _     Welcome to        ____    __   ___  ",
+            "  / ____(_)                     |___ \\  / /  / _ \\ ",
+            " | (___  _  __ _ _ __ ___   __ _  __) |/ /_ | | | |",
+            "  \\___ \\| |/ _` | '_ ` _ \\ / _` ||__ <| '_ \\| | | |",
+            "  ____) | | (_| | | | | | | (_| |___) | (_) | |_| |",
+            " |_____/|_|\\__, |_| |_| |_|\\__,_|____/ \\___/ \\___/ ",
+            "            __/ |                                  ",
+            "           |___/                                   ",
+        };
+        ncplane_set_fg_rgb(p, COL_BORDER_ACTIVE);
+        for (int y = 0; y < 8; y++) {
+            ncplane_putstr_yx(p, y, 1, art[y]);
+        }
+        ncplane_set_fg_default(p);
+        return;
+    };
+
+    draw_list(p, nav_parent(nav), ROLE_PARENT);
+}
+
 static void draw_help(const pane_t *help) {
     struct ncplane *p = help->content;
     if (p == NULL) {
@@ -248,7 +275,7 @@ static void draw_help(const pane_t *help) {
 }
 
 static void draw_all(panes_t *panes, nav_t *nav) {
-    draw_list(panes->parent.content,  nav_parent(nav),  ROLE_PARENT);
+    draw_parent_pane(panes->parent.content, nav);
     draw_list(panes->current.content, nav_current(nav), ROLE_CURRENT);
     draw_list(panes->preview.content, nav_preview(nav), ROLE_PREVIEW);
     draw_help(&panes->help);
