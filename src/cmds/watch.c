@@ -36,7 +36,7 @@ const char* const usage =
     "Note that the lecture to watch must be the final argument.\n";
 
 const char* const timeUsage = 
-    "Start time argument is to be given as HH:MM:SS\n";
+    "Start time argument is to be given as HH;MM;SS\n";
 
 const char* const help =
     "play selected lecture recording. Uses mpv as video player. If this is not "
@@ -45,7 +45,7 @@ const char* const help =
     "Options:\n"
     "\t-s\tSplitscreen mode. Plays both recorded screens for a given lecture. "
     "Does not discriminate if these recordings are identical.\n"
-    "\t-t\tStart time of recording. [timestamp] format is HH:MM:SS\n"
+    "\t-t\tStart time of recording. [timestamp] format is HH;MM;SS\n"
     "\t-l\tLecture to be played. 1 indexed, given as a number\n";
 
 /*  FUNCTION DEFS  */
@@ -122,9 +122,10 @@ bool check_time_arg(char* time)
     for (int i = 0; i < 8; i++) {
         // AHHHHHHH MAGIC NUMBERS LOOK AT HOW BAD THE CODE IS OMG
         if (i == 2 || i == 5) {
-            if (time[i] != ':') {
+            if (time[i] != ';') {
                 return false;
             }
+            time[i] = ':';
         } else {
             if (!isdigit(time[i])) {
                 return false;

@@ -389,7 +389,7 @@ int sigma360_tui(void) {
                 execlp("rm", "rm", "-rf", root, NULL);
             }
             wait(NULL);
-            waitpid(thumb, NULL, 0);
+            /* waitpid(thumb, NULL, 0); */
             break; // quiting out
         }
 
@@ -453,11 +453,11 @@ int sigma360_tui(void) {
                             ncplane_putstr_yx(box, 1, 2, "downloading...");
                             notcurses_render(nc);
                         }
-                        sigma360_tui_watch(dir, false, "00:00:00");
+                        sigma360_tui_watch(dir, false, "00;00;00");
 
                         if (box) ncplane_destroy(box);
                     } else {
-                        sigma360_tui_watch(dir, false, "00:00:00");
+                        sigma360_tui_watch(dir, false, "00;00;00");
                     }
                     free(dir);
                 }
@@ -466,7 +466,7 @@ int sigma360_tui(void) {
             sigma360_tui_image_clear();
             sigma360_tui_save(nc, &nav, root);
         } else if (id == NCKEY_ENTER && ni.shift) {
-            dispatch_watch(&nav, root, true, "00:00:00");
+            dispatch_watch(&nav, root, true, "00;00;00");
         } else if (id == 't') {
             char* timestamp;
             if (!get_timestamp(nc, &timestamp)) {
@@ -971,8 +971,9 @@ int get_timestamp(struct notcurses* nc, char** timestamp)
         ncplane_erase(popup);
         ncplane_perimeter_rounded(popup, 0, 0, 0); // border
         ncplane_putstr_yx(popup, 1, 2, 
-                "Enter a start time for the lecture (HH:MM:SS): ");
+                "Enter a start time for the lecture (HH;MM;SS): ");
         ncplane_putstr_yx(popup, 3, 2, *timestamp);
+        sigma360_tui_image_clear();
         notcurses_render(nc);
 
         struct ncinput ni;
@@ -994,7 +995,7 @@ int get_timestamp(struct notcurses* nc, char** timestamp)
             if (size > 1) {
                 (*timestamp)[--size - 1] = '\0';
             } 
-        } else if (key <= 127) {
+        } else if ((key >= '0' && key <= '9') || key == ';') {
             *timestamp = realloc(*timestamp, ++size * sizeof(char));
             (*timestamp)[size - 2] = key;
             (*timestamp)[size - 1] = '\0';
