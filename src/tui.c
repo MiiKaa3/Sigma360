@@ -28,8 +28,6 @@
 #define COL_HELP_KEY      0xbd93f9u
 #define COL_HELP_DESC     0x91bbffu
 
-#define COL_ACTIVE_COURSE 0xffd866
-
 #define DETAILS_MIN_COLS 10
 #define HELP_ROWS 3
 
@@ -184,8 +182,6 @@ static void draw_list(struct ncplane *p, list_t *l, panerole_t role) {
 
     for (size_t i = l->top; i < l->count && (i - l->top) < rows; i++) {
         const entry_t *e = &l->items[i];
-	bool is_course = (e->children.count > 0);
-	bool is_active = cJSON_IsTrue(cJSON_GetObjectItem(e->node, "isActive"));
 
         char line[512];
         if (role == ROLE_CURRENT && cols > DETAILS_MIN_COLS && e->detail != NULL) {
@@ -196,10 +192,10 @@ static void draw_list(struct ncplane *p, list_t *l, panerole_t role) {
  
         if (i == l->sel) {
             ncplane_set_bg_rgb(p, (role == ROLE_CURRENT) ? COL_SEL_BG_ACTIVE : COL_SEL_BG_IDLE);
-            ncplane_set_fg_rgb(p, (is_active && is_course) ? COL_ACTIVE_COURSE : COL_SEL_FG);
+            ncplane_set_fg_rgb(p, COL_SEL_FG);
         } else {
             ncplane_set_bg_default(p);
-            ncplane_set_fg_rgb(p, (is_active && is_course) ? COL_ACTIVE_COURSE : 0xffffff);
+            ncplane_set_fg_default(p);
         }
  
         // '%-*.*s' pads to the full pane width so the selected row reads as a solid bar, and truncates anything longer.
@@ -220,12 +216,13 @@ static void draw_help(const pane_t *help) {
     static const struct { const char *key; const char *desc; } binds[] = {
         { "q/esc",   "quit"  },
         { "enter",   "watch" },
+        { "t",       "watch at time"},
         { "s",       "save"  },
         { "h/left",  "back"  },
         { "j/down",  "down"  },
         { "k/up",    "up"    },
         { "l/right", "into"  },
-        { "shift+enter", "split screen"},
+        { "shift+[watch]", "split screen"},
     };
  
     int x = 1;
@@ -264,6 +261,8 @@ static void draw_all(panes_t *panes, nav_t *nav) {
 static int sigma360_tui_watch(char* dir, bool split, char* time);
 static int sigma360_tui_save(struct notcurses *nc, nav_t *nav, const char *root);
 char* build_dir(char* root, char* url, int lectureNum);
+void dispatch_watch(nav_t* nav, char* root, bool ss, char* time);
+int get_timestamp(struct notcurses* nc, char** timestamp);
 
 int sigma360_tui(void) {
     char *script;
@@ -272,7 +271,7 @@ int sigma360_tui(void) {
     }
     strcat(script, "/src/cmds/girlscout.py");
 
-pid_t pid = fork();
+    pid_t pid = fork();
     if (pid < 0) {
         exit(EXIT_FAILURE);
     }
@@ -397,27 +396,25 @@ pid_t pid = fork();
         } else if (id == 'h' || id == NCKEY_LEFT) {
             nav_ascend(&nav);
         } else if (id == NCKEY_ENTER && !ni.shift) {
-            if (!nav_descend(&nav)) {
-                list_t *l = nav_current(&nav);
-                if (nav.depth > 0 && l->count > 0) {
-                    char* dir = build_dir(root, nav.path[nav.depth]->url, 
-                            (int)l->sel + 1);
-                    sigma360_tui_watch(dir, false, "00:00:00");
-                    free(dir);
-                }
-            }
+            dispatch_watch(&nav, root, false, "00:00:00");
         } else if (id == 's') {
             sigma360_tui_image_clear();
             sigma360_tui_save(nc, &nav, root);
         } else if (id == NCKEY_ENTER && ni.shift) {
-            if (!nav_descend(&nav)) {
-                list_t *l = nav_current(&nav);
-                if (nav.depth > 0 && l->count > 0) {
-                    char* dir = build_dir(root, nav.path[nav.depth]->url, 
-                            (int)l->sel + 1);
-                    sigma360_tui_watch(dir, true, "00:00:00");
-                    free(dir);
-                }
+            dispatch_watch(&nav, root, true, "00:00:00");
+        } else if (id == 't') {
+            char* timestamp;
+            if (!get_timestamp(nc, &timestamp)) {
+                dispatch_watch(&nav, root, false, timestamp);
+            } else {
+                // exit silently if escaped from
+            }
+        } else if (id == 'T') {
+            char* timestamp;
+            if (!get_timestamp(nc, &timestamp)) {
+                dispatch_watch(&nav, root, true, timestamp);
+            } else {
+                // exit silently if escaped from
             }
         } else {
             continue; // some unbound key; no redraw required
@@ -450,6 +447,19 @@ pid_t pid = fork();
     nav_free(&nav);
     cJSON_Delete(json);
     return 0;
+}
+
+void dispatch_watch(nav_t* nav, char* root, bool ss, char* time)
+{
+    if (!nav_descend(nav)) {
+        list_t *l = nav_current(nav);
+        if (nav->depth > 0 && l->count > 0) {
+            char* dir = build_dir(root, nav->path[nav->depth]->url, 
+                    (int)l->sel + 1);
+            sigma360_tui_watch(dir, ss, time);
+            free(dir);
+        }
+    }
 }
 
 static int sigma360_tui_watch(char* dir, bool split, char* time)
@@ -851,4 +861,81 @@ static char *save_lecture_name(nav_t *nav) {
         snprintf(s, (size_t)len + 1, "%s_%s", course->label, lecture->label);
     }
     return s;
+}
+
+// ------------------------------------------- //
+//  Timestamp grabbing                         //
+// ------------------------------------------- //
+
+struct ncplane* build_popup(struct notcurses* nc, int rows, int cols)
+{
+    struct ncplane* stdplane = notcurses_stdplane(nc);
+    unsigned planeRows;
+    unsigned planeCols;
+    ncplane_dim_yx(stdplane, &planeRows, &planeCols);
+
+    int x = ((int)planeCols - cols) / 2;
+    int y = ((int)planeRows - rows) / 2;
+
+    struct ncplane_options nopts = {
+        .x = x,
+        .y = y,
+        .rows = (unsigned)rows,
+        .cols = (unsigned)cols,
+    };
+    struct ncplane* popup = ncplane_create(stdplane, &nopts);
+
+    ncplane_set_bg_rgb8(popup, 0, 0, 0);
+    ncplane_set_fg_rgb8(popup, 255, 255, 255);
+    ncplane_set_base(popup, " ", 0, ncplane_channels(popup));
+
+    return popup;
+}
+
+int get_timestamp(struct notcurses* nc, char** timestamp)
+{
+    // rows = 5, cols = 50. Adjustable to desired window size
+    struct ncplane* popup = build_popup(nc, 5, 50);
+    
+    int size = 1;
+    *timestamp = malloc(sizeof(char));
+    (*timestamp)[size - 1] = '\0';
+
+    while(true) {
+        // Render pane
+        ncplane_erase(popup);
+        ncplane_perimeter_rounded(popup, 0, 0, 0); // border
+        ncplane_putstr_yx(popup, 1, 2, 
+                "Enter a start time for the lecture (HH:MM:SS): ");
+        ncplane_putstr_yx(popup, 3, 2, *timestamp);
+        notcurses_render(nc);
+
+        struct ncinput ni;
+        uint32_t key = notcurses_get_blocking(nc, &ni);
+
+        if (ni.evtype == NCTYPE_RELEASE || ni.evtype == NCTYPE_REPEAT) {
+            continue;
+        }
+
+        if (key == NCKEY_ENTER) {
+            /* *timestamp = realloc(*timestamp, ++size * sizeof(char)); */
+            /* (*timestamp)[size - 1] = '\0'; */
+            break;
+        } else if (key == NCKEY_ESC || key == 'q') {
+            free(*timestamp);
+            ncplane_destroy(popup);
+            return -1;
+        } else if (key == NCKEY_BACKSPACE) {
+            if (size > 1) {
+                (*timestamp)[--size - 1] = '\0';
+            } 
+        } else if ((key >= '0' && key <= '9') || (key == ':')) {
+            *timestamp = realloc(*timestamp, ++size * sizeof(char));
+            (*timestamp)[size - 2] = key;
+            (*timestamp)[size - 1] = '\0';
+        }
+    }
+
+    ncplane_destroy(popup);
+    return 0;
 }

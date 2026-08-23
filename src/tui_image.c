@@ -59,6 +59,9 @@ int sigma360_tui_image_show(struct ncplane *panel, const char *path) {
         .n = n,
         .scaling = NCSCALE_SCALE,
         .blitter = NCBLIT_PIXEL,
+        .flags = NCVISUAL_OPTION_HORALIGNED | NCVISUAL_OPTION_VERALIGNED,
+        .x = NCALIGN_CENTER,
+        .y = NCALIGN_CENTER
     };
     if (!ncvisual_blit(ncplane_notcurses(panel), ncv, &vopts)) {
         fprintf(stderr, "image: blit failed for %s\n", path);

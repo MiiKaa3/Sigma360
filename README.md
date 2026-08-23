@@ -4,6 +4,7 @@ Hackathon 2026 Project!
 Echo360 but as a terminal client/user interface
 
 ## Requirements
+- mpv
 - cJSON.h
 - notcurses
 - ffmpeg
@@ -11,7 +12,7 @@ Echo360 but as a terminal client/user interface
 - python-playwright
 
 ```
-$ sudo pacman -S cjson notcurses ffmpeg python-requests python-playwright
+$ sudo pacman -S mpv cjson notcurses ffmpeg python-requests python-playwright
 $ playwright install chromium
 ```
 
