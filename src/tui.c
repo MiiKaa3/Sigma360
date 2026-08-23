@@ -28,6 +28,8 @@
 #define COL_HELP_KEY      0xbd93f9u
 #define COL_HELP_DESC     0x91bbffu
 
+#define COL_ACTIVE_COURSE 0xffd866
+
 #define DETAILS_MIN_COLS 10
 #define HELP_ROWS 3
 
@@ -182,6 +184,8 @@ static void draw_list(struct ncplane *p, list_t *l, panerole_t role) {
 
     for (size_t i = l->top; i < l->count && (i - l->top) < rows; i++) {
         const entry_t *e = &l->items[i];
+	bool is_course = (e->children.count > 0);
+	bool is_active = cJSON_IsTrue(cJSON_GetObjectItem(e->node, "isActive"));
 
         char line[512];
         if (role == ROLE_CURRENT && cols > DETAILS_MIN_COLS && e->detail != NULL) {
@@ -192,10 +196,10 @@ static void draw_list(struct ncplane *p, list_t *l, panerole_t role) {
  
         if (i == l->sel) {
             ncplane_set_bg_rgb(p, (role == ROLE_CURRENT) ? COL_SEL_BG_ACTIVE : COL_SEL_BG_IDLE);
-            ncplane_set_fg_rgb(p, COL_SEL_FG);
+            ncplane_set_fg_rgb(p, (is_active && is_course) ? COL_ACTIVE_COURSE : COL_SEL_FG);
         } else {
             ncplane_set_bg_default(p);
-            ncplane_set_fg_default(p);
+            ncplane_set_fg_rgb(p, (is_active && is_course) ? COL_ACTIVE_COURSE : 0xffffff);
         }
  
         // '%-*.*s' pads to the full pane width so the selected row reads as a solid bar, and truncates anything longer.
