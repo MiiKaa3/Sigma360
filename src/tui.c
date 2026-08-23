@@ -447,6 +447,7 @@ int sigma360_tui(void) {
                             ncplane_set_fg_rgb(box, COL_HELP_DESC);
                             ncplane_set_bg_rgb(box, 0x000000);
                             ncplane_putstr_yx(box, 1, 2, "downloading...");
+                            ncplane_move_top(box);
                             notcurses_render(nc);
                         }
                         sigma360_tui_watch(dir, false, "00:00:00");
@@ -969,6 +970,7 @@ int get_timestamp(struct notcurses* nc, char** timestamp)
         ncplane_putstr_yx(popup, 1, 2, 
                 "Enter a start time for the lecture (HH:MM:SS): ");
         ncplane_putstr_yx(popup, 3, 2, *timestamp);
+        ncplane_move_top(popup);
         notcurses_render(nc);
 
         struct ncinput ni;
