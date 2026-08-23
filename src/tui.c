@@ -451,6 +451,7 @@ int sigma360_tui(void) {
                             ncplane_set_fg_rgb(box, COL_HELP_DESC);
                             ncplane_set_bg_rgb(box, 0x000000);
                             ncplane_putstr_yx(box, 1, 2, "downloading...");
+                            sigma360_tui_image_clear();
                             notcurses_render(nc);
                         }
                         sigma360_tui_watch(dir, false, "00;00;00");
