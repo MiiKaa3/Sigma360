@@ -78,8 +78,7 @@ class Fetcher():
         screen2_url = path + "s2q1.mp4"
         has_screen2 = self.download_mp4(screen2_url, output_path + "/v2.mp4")
         if not has_screen2:
-            print(f"Lecture {lecture_number}: single-screen recording, no s2.")
-
+            self.download_mp4(screen1_url, output_path + "/v2.mp4")
         return 0
     
     def download_mp4(self, url: str, output_path: str):
