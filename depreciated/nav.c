@@ -4,8 +4,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define NAV_MAX_CHILDREN 4096
-
 // ------------------------------------------- //
 // list_t / entry_t management                 //
 // ------------------------------------------- //
@@ -35,11 +33,8 @@ static void entry_free(entry_t *e) {
     list_free(&e->children);
 }
 
-static int list_alloc(list_t *l, size_t n) {
-    l->items = (n > 0) ? calloc(n, sizeof *l->items) : NULL;
-    if (n > 0 && l->items == NULL) {
-        return -1;
-    }
+static int list_alloc(list_t* l, int n) {
+    l->items = calloc(n, sizeof *l->items);
     l->count = 0;
     l->sel   = 0;
     l->top   = 0;
@@ -66,9 +61,6 @@ static int load_lectures(nav_t *n, entry_t *course) {
     }
  
     int total = amt->valueint;
-    if (total > NAV_MAX_CHILDREN) {
-        total = NAV_MAX_CHILDREN;
-    }
     if (list_alloc(&course->children, (size_t)total) != 0) {
         return -1;
     }
@@ -89,23 +81,24 @@ static int load_lectures(nav_t *n, entry_t *course) {
     return 0;
 }
  
-static int load_courses(nav_t *n) {
+static int load_courses(nav_t* n)
+{
     int size = cJSON_GetArraySize(n->json);
-    if (size < 0) {
-        size = 0;
+    // If the courses.json has less than or equal to 0 courses in it, then
+    // obviously something is wrong
+    if (size <= 0) {
+         return BAD_JSON
     }
-    if (list_alloc(&n->root.children, (size_t)size) != 0) {
-        return -1;
-    }
+    list_alloc(&n->root.children, size);
  
-    cJSON *element = NULL;
+    cJSON* element = NULL;
     cJSON_ArrayForEach(element, n->json) {
-        cJSON *code = cJSON_GetObjectItemCaseSensitive(element, "courseCode");
-        cJSON *name = cJSON_GetObjectItemCaseSensitive(element, "courseName");
-        cJSON *url  = cJSON_GetObjectItemCaseSensitive(element, "url");
+        cJSON* code = cJSON_GetObjectItemCaseSensitive(element, "courseCode");
+        cJSON* name = cJSON_GetObjectItemCaseSensitive(element, "courseName");
+        cJSON* url  = cJSON_GetObjectItemCaseSensitive(element, "url");
  
         if (!cJSON_IsString(code) || code->valuestring == NULL) {
-            continue;
+            coninue;
         }
         if (n->root.children.count >= (size_t)size) {
             break;
@@ -132,7 +125,7 @@ static int load_courses(nav_t *n) {
 // nav                                         //
 // ------------------------------------------- //
 
-int nav_init(nav_t *n, cJSON *json) {
+int nav_init(nav_t* n, cJSON* json) {
     memset(n, 0, sizeof(*n));
     n->json = json;
     n->depth = 0;

@@ -4,7 +4,8 @@
 
 static struct ncplane *img_plane = NULL;
 static char img_current[512];
-static unsigned img_rows, img_cols;      /* geometry we last built for */
+static unsigned img_rows;      /* geometry we last built for */
+static unsigned img_cols;
 
 void sigma360_tui_image_clear(void) {
     if (img_plane) {
@@ -12,27 +13,35 @@ void sigma360_tui_image_clear(void) {
         img_plane = NULL;
     }
     img_current[0] = '\0';
-    img_rows = img_cols = 0;
+    img_rows = 0;
+    img_cols = 0;
 }
 
 int sigma360_tui_image_show(struct ncplane *panel, const char *path) {
+
+
     if (!path) {
         sigma360_tui_image_clear();
         return 0;
     }
 
-    unsigned prows, pcols;
-    ncplane_dim_yx(panel, &prows, &pcols);
-    if (prows < 3 || pcols < 3) {        /* too small to hold anything */
+    unsigned rows, cols;
+    ncplane_dim_yx(panel, &rows, &cols);
+    // This feels arbitrary. We should alway provide preview unless the screen
+    // cannot fit the program
+    if (rows < 3 || cols < 3) {        /* too small to hold anything */
         sigma360_tui_image_clear();
         return 0;
     }
-    unsigned rows = prows - 2, cols = pcols - 2;   /* inset past the border */
+    // Inset so image is within pane borders.
+    rows -= 2;
+    cols -=2; 
 
+    // Catch if image is already displayed in pane
     if (strcmp(path, img_current) == 0 && rows == img_rows && cols == img_cols) {
-        return 0;                        /* same image, same size — done */
+        return 0;
     }
-
+    // Else we want to display the image
     sigma360_tui_image_clear();
     snprintf(img_current, sizeof img_current, "%s", path);
     img_rows = rows;

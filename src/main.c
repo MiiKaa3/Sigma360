@@ -2,28 +2,31 @@
 #include <string.h>
 
 #include "tui.h"
+#include "const.h"    
 
 void version_msg(void);
 void usage_msg(void);
 
-int main(int argc, char **argv) {
+int main(int argc, char **argv) 
+{
+    int exitCode = GOOD;
     if (argc > 1) {
         if (strcmp(argv[1], "--version") == 0) {
             version_msg();
         } else if (strcmp(argv[1], "--help") == 0) {
             usage_msg();
         } else if (strcmp(argv[1], "--tui") == 0) {
-            sigma360_tui();
+            exitCode = sigma360_tui();
         } else {
             fprintf(stderr, "[ERROR] Unknown argument: %s\n", argv[1]);
             usage_msg();
             return 1;
         }
     } else {
-        sigma360_tui();
+        exitCode = sigma360_tui();
     }
 
-    return 0;
+    return exitCode;
 }
 
 void version_msg(void){

@@ -1,34 +1,23 @@
 #include <stdlib.h>
-#include <unistd.h>
+#include <unistd.h> 
 #include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
 #include <dirent.h>
+
 #include <cjson/cJSON.h>
 #include <sys/stat.h>
 #include <sys/types.h>
-#include "utilities.h"
+#include <sys/wait.h>
 
-int findcwd(char** buf)
-{
-    long size;
-    size = pathconf(".", _PC_PATH_MAX);
-    if (size == -1) {
-        fprintf(stderr, "CHECK YOUR FILE PATH LIMITS!!!!!");
-        return -1;
-    }
-    *buf = malloc(size * sizeof(char));
-    getcwd(*buf, size);
-    return 0;
-}
+#include "utilities.h"
+#include "const.h"
 
 int read_file(char* dir, char** file)
 {
     FILE* json = fopen(dir, "r");
     if (json == NULL) {
-        fprintf(stderr, 
-                "Failed opening .json. Check directory or existence.\n");
-        return 10;
+        return BAD_FOPEN;
     }
     *file = malloc(sizeof(char));
     int size = 0;
@@ -41,25 +30,19 @@ int read_file(char* dir, char** file)
     *file = realloc(*file, ++size * sizeof(char));
     (*file)[size - 1] = '\0';
     fclose(json);
-    return 0;
+    return GOOD;
 }
 
 int build_tree(char** root)
 {
     char* file;
-    char* jDir;
-    if (findcwd(&jDir)) {
-        return -1;
-    }
-    strcat(jDir, "/courses.json");
-    read_file(jDir, &file);
+    read_file("./courses.json", &file);
     char template[] = "/tmp/sigma_XXXXXX";
     *root = strdup(mkdtemp(template));
 
     cJSON* json = cJSON_Parse(file);
     if (json == NULL) {
-        fprintf(stderr, "Bad .json read.\n");
-        return 11;
+        return BAD_JSON;
     }
     char* tmp = strdup(*root);
     tmp = realloc(tmp, (strlen(tmp)+strlen("/%s")+1)*sizeof(char));
@@ -76,9 +59,7 @@ int build_tree(char** root)
         cJSON* lessons = cJSON_GetObjectItem(list, "lessonCount");
         
         for (int i = 1; i <= lessons->valueint; i++) {
-            int len = snprintf(NULL, 0, "Lecture%d", i);
-            char* lecture = malloc(++len * sizeof(char));
-            snprintf(lecture, len, "Lecture%d", i);
+            char* lecture = buildLec("Lecture%d", i);
             char* subdir = buildArgs(dir, lecture);
             mkdir(subdir, 0777);
             free(lecture);
@@ -87,8 +68,10 @@ int build_tree(char** root)
         free(dir);
         list = list->next;
     }
-
-    return 0;
+    cJSON_Delete(json);
+    free(tmp);
+    free(file);
+    return GOOD;
 }
 
 char* buildArgs(char* option, char* var) 
@@ -107,57 +90,55 @@ char* buildLec(char* option, int num)
     return str;
 }
 
-cJSON *get_courses_json(char* filename)
+int get_courses_json(char* filename, cJSON** json)
 {
-    FILE *file = fopen(filename, "r");
+    FILE* file = fopen(filename, "r");
     if (!file) {
         // fetch
-        if (system("( cd ./src/cmds ; python3 fetcher.py --load ../../courses.json )") != 0) {
-            fprintf(stderr, "[ERROR] Failed to fetch courses.json\n");
+        pid_t pid = fork();
+        if (pid < 0) {
+            return BAD;
         }
-        file = fopen(filename, "r");
-        if (!file) {
-            fprintf(stderr, "[ERROR] Failed to open %s\n", filename);
-            return NULL;
+        if (!pid) {
+            execlp("python3", 
+                    "python3", fetcher, "--load", "courses.json", NULL);
+            // Upon unsuccessful exec
+            _exit(BAD);
         }
-    }
-
-    fseek(file, 0, SEEK_END);
-    long file_size = ftell(file);
-    fseek(file, 0, SEEK_SET);
-
-    char *file_content = malloc(file_size + 1);
-    if (!file_content) {
-        fprintf(stderr, "[ERROR] Memory allocation failed\n");
+        int status;
+        waitpid(pid, &status, 0);
+        if (WIFEXITED(status)) {
+            if (WEXITSTATUS(status)) {
+                return BAD_FETCH;
+            }
+        } else {
+            return BAD_FETCH;
+        }
+    } else {
         fclose(file);
-        return NULL;
     }
 
-    fread(file_content, 1, file_size, file);
-    file_content[file_size] = '\0';
-    fclose(file);
+    char* contents;
+    read_file("./courses.json", &contents);
 
-    cJSON *json_data = cJSON_Parse(file_content);
-    free(file_content);
-    if (!json_data) {
-        fprintf(stderr, "[ERROR] Failed to parse JSON\n");
-        return NULL;
+    *json = cJSON_Parse(contents);
+    free(contents);
+    if (!*json) {
+        cJSON_Delete(*json);
+        return BAD_JSON;
     }
-
-    const char *error_ptr = cJSON_GetErrorPtr();
-    if (error_ptr != NULL) {
-        fprintf(stderr, "[ERROR] JSON Error before: %s\n", error_ptr);
-    }
-
-    return json_data;
+    return GOOD;
 }
 
-int compare_sem_then_code(const void *a, const void *b) {
+int compare_sem_then_code(const void *a, const void *b)
+{
     const cJSON *item_a = *(const cJSON **)a;
     const cJSON *item_b = *(const cJSON **)b;
 
-    const cJSON *yearsem_a = cJSON_GetObjectItemCaseSensitive(item_a, "yearSem");
-    const cJSON *yearsem_b = cJSON_GetObjectItemCaseSensitive(item_b, "yearSem");
+    const cJSON *yearsem_a 
+        = cJSON_GetObjectItemCaseSensitive(item_a, "yearSem");
+    const cJSON *yearsem_b 
+        = cJSON_GetObjectItemCaseSensitive(item_b, "yearSem");
 
     const char *str_a = cJSON_IsString(yearsem_a) ? yearsem_a->valuestring : "";
     const char *str_b = cJSON_IsString(yearsem_b) ? yearsem_b->valuestring : "";
@@ -169,8 +150,10 @@ int compare_sem_then_code(const void *a, const void *b) {
     }
 
     // Names are equal — fall back to "code" as the tiebreaker
-    const cJSON *code_a = cJSON_GetObjectItemCaseSensitive(item_a, "courseCode");
-    const cJSON *code_b = cJSON_GetObjectItemCaseSensitive(item_b, "courseCode");
+    const cJSON *code_a 
+        = cJSON_GetObjectItemCaseSensitive(item_a, "courseCode");
+    const cJSON *code_b 
+        = cJSON_GetObjectItemCaseSensitive(item_b, "courseCode");
 
     const char *code_str_a = cJSON_IsString(code_a) ? code_a->valuestring : "";
     const char *code_str_b = cJSON_IsString(code_b) ? code_b->valuestring : "";
@@ -180,22 +163,22 @@ int compare_sem_then_code(const void *a, const void *b) {
 
 void sort_cjson_array(cJSON *array) {
     int count = cJSON_GetArraySize(array);
-    if (count < 2) return;
+    // If we have either 0 or 1 item, its trivially sorted
+    if (count < 2) {
+        return;
+    }
 
-    // Step 1: pull pointers out into a plain C array
-    cJSON **items = malloc(count * sizeof(cJSON *));
+    // We need the JSON items in an array to sort
+    cJSON** items = malloc(count * sizeof(cJSON*));
     for (int i = 0; i < count; i++) {
         items[i] = cJSON_GetArrayItem(array, i);
     }
+    qsort(items, count, sizeof(cJSON *), compare_sem_then_code); // Sort
 
-    // Step 2: sort the plain array
-    qsort(items, count, sizeof(cJSON *), compare_sem_then_code);
-
-    // Step 3: detach all items from the original array (without freeing them)
-    // then re-add them in sorted order
+    // Place back in a JSON struct
     cJSON *dummy;
     while ((dummy = cJSON_DetachItemFromArray(array, 0)) != NULL) {
-        // just draining the array; items[] still holds valid pointers
+        // The function above does everything we want.
     }
 
     for (int i = 0; i < count; i++) {
@@ -210,16 +193,15 @@ bool is_dir_empty(char* dir)
     int n = 0;
     struct dirent* d;
     DIR* folder = opendir(dir);
-    // Need some better way of handling bad directory. Just assume its right
-    // for the minute
     if (folder == NULL) {
-        fprintf(stderr, "Directory does not exist\n");
-        return true;
+        // Realistically this should never hit but for safety you know
+        return BAD_DIR;
     }
+    // readdir goes through each file in a directory until NULL at the end
     while ((d = readdir(folder)) != NULL) {
         if (++n > 3) {
-            // We necessarily get . and .., anything else and the directory
-            // is non-empty, so return false;
+            // We know as fact that the directory will have ., .., and t.jpg
+            // Anything else and it will be video/audio files
             closedir(folder);
             return false;
         }
@@ -232,4 +214,15 @@ void expand_path(char** path)
 {
     *path = realloc(*path, (strlen(*path)+strlen("/%s")+1)*sizeof(char));
     strcat(*path, "/%s");
+}
+
+char* build_dir(char* root, char* url, int lectureNum)
+{
+    char* dir = strdup(root);
+    expand_path(&dir);
+    dir = buildArgs(dir, url);
+    expand_path(&dir);
+    char* lecture = buildLec("Lecture%d", lectureNum);
+    dir = buildArgs(dir, lecture);
+    return dir;
 }

@@ -1,0 +1,37 @@
+1. UNIVERSAL ERROR CODE SYSTEM AND ERROR MESSAGES
+    - err.h with exitCodes and error messages
+        > changge err.h -> const.h
+        > refactor/err handling up to coment in tui.c
+2. ERR HANDLING
+    - Generally catch errors and print output in an error pane and 
+      properly exit
+3. REFACTOR
+    - catch any bugs from use.
+    - Refactor the actual tui display and shit
+    KNOWN BUGS/BAD CODE:
+        > active courses don't change colour until cursor moves over/past
+        > Filetree is sometimes not made?
+        > utilities.c/findcwd - _PC_PATH_MAX not general enough for arbitrary
+        file system
+        > If there already exists a courses.json, this wont be updated when
+        new cookies are grabbed or new lectures uploaded. Either add
+        'u  update' to update courses.json or remove courses.json each time
+        > Some stuff works on Konsole and not on Kitty, e.g. certain keystrokes
+        Maybe port to most up-to-date terminal protocol on arch
+        > MPV rewinding video cuts out audio. Potentially a caused by linking
+        audio and video at runtime.
+        > preview image doesn't clear properly when cursor on courses
+        > not all thumbnails are collected.
+        > proper exit cleanup routine
+        > Want to delete "downloading" box once downloaded and before playing
+        > Need to formalise pathing from cmds run (i.e. the fetcher.py problem)
+
+4. EXTRA FUNCTIONALITY
+    - Create a .conf file containing: 
+        > login details for autopopulation
+    - Safer exitting
+    - Support for other video players (Reading default selected video player)
+    - Have some sort of binary that can open sigma360 anywhere in the system
+    - Have a "playing" box when video is playing.
+    - Signal handling?
+

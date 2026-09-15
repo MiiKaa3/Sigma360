@@ -22,9 +22,11 @@ pkg_check_modules(NOTCURSES REQUIRED IMPORTED_TARGET notcurses)
 add_executable(sigma360
     src/main.c
     src/tui.c
-    src/nav.c
+    src/navigation.c
     src/utilities.c
     src/tui_image.c
+    src/const.c
+    src/fetch.c
 )
 
 target_include_directories(sigma360 PRIVATE src)

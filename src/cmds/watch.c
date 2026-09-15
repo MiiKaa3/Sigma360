@@ -4,9 +4,13 @@
 #include <string.h>
 #include <ctype.h>
 #include <unistd.h>
+
 #include <sys/wait.h>
 #include <libavformat/avformat.h>
+
 #include "../utilities.h"
+#include "../fetch.h"
+#include "../const.h"
 
 /*  STRUCTS  */
 
@@ -21,22 +25,7 @@ typedef struct {
     Options options;
 } Parameters;
 
-/*  MACROS  */
-
-#define GOOD      0
-#define BAD_USAGE 1
-#define BAD_TIME  2
-#define BAD_FETCH 3
-#define BAD_PLAY  4
-
 /*  STRING CONSTANTS  */
-
-const char* const usage = 
-    "Usage: watch [-s, -t [timestamp]] [-l [lecture]]\n"
-    "Note that the lecture to watch must be the final argument.\n";
-
-const char* const timeUsage = 
-    "Start time argument is to be given as HH;MM;SS\n";
 
 const char* const help =
     "play selected lecture recording. Uses mpv as video player. If this is not "
@@ -52,8 +41,7 @@ const char* const help =
 
 int parse(char** argv, Parameters* params);
 bool check_time_arg(char* time);
-int play_lecture(Parameters* params);
-int fetch_lecture(Parameters* params);
+int play_lecture_mpv(Parameters* params);
 double get_mp4_dur(char* path);
 bool check_dur_v_timestamp(double duration, char* timestamp);
 
@@ -61,22 +49,22 @@ bool check_dur_v_timestamp(double duration, char* timestamp);
 
 int main(int argc, char** argv)
 {
-    int exitCode = 0;
-    Options options = {.startTime = "00:00:00"};
+    int exitCode = GOOD;
+    Options options = {.startTime = "00;00;00"};
     Parameters params = {.options = options};
 
     if ((exitCode = parse(argv, &params))) {
         return exitCode;
     }
     if (is_dir_empty(params.lecture) && 
-            (exitCode = fetch_lecture(&params))) {
+            (exitCode = get_lecture(params.lecture))) {
         return exitCode;
     }
-    if ((exitCode = play_lecture(&params))) {
+    if ((exitCode = play_lecture_mpv(&params))) {
         return exitCode;
     }
 
-    return 0;
+    return GOOD;
 }
 
 int parse(char** argv, Parameters* params)
@@ -90,8 +78,8 @@ int parse(char** argv, Parameters* params)
             params->options.splitScreen = true;
         } else if (!strcmp(argv[0], "-t") && argv[1]) {
             if (!check_time_arg(argv[1])) {
-                fprintf(stderr, timeUsage);
-                return BAD_TIME;
+                fprintf(stderr, watchTimeUsage);
+                return BAD_WATCH_PARSE;
             }
             params->options.startTime = argv[1];
             argv++;
@@ -99,14 +87,14 @@ int parse(char** argv, Parameters* params)
             params->course = argv[1];
             argv++;
         } else {
-            fprintf(stderr, usage);
-            return BAD_USAGE;
+            fprintf(stderr, watchUsage);
+            return BAD_WATCH_PARSE;
         }
         argv++;
     }
     if (!params->lecture) {
-        fprintf(stderr, usage);
-        return BAD_USAGE;
+        fprintf(stderr, watchUsage);
+        return BAD_WATCH_PARSE;
     }
     return GOOD;
 }
@@ -135,22 +123,7 @@ bool check_time_arg(char* time)
     return true;
 }
 
-int fetch_lecture(Parameters* params)
-{
-    char* buf;
-    findcwd(&buf);
-    char* temp = "/src/cmds/fetcher.py";
-    strcat(buf, temp);
-    if (!fork()) {
-        execlp("python3", "python3", buf, "--watch", params->lecture, NULL);
-        // If exec fails
-        return BAD_FETCH;
-    }
-    wait(NULL);
-    return 0;
-}
-
-int play_lecture(Parameters* params)
+int play_lecture_mpv(Parameters* params)
 {
     char* tmpPath = strdup(params->lecture);
     tmpPath = realloc(tmpPath, 
@@ -170,27 +143,36 @@ int play_lecture(Parameters* params)
 
     double dur = get_mp4_dur(v1);
     if (!check_dur_v_timestamp(dur, params->options.startTime)) {
-        fprintf(stderr, "Timestamp given exceeds lecture duration.\n");
-        return -1;
+        fprintf(stderr, badTimestamp);
+        return BAD_TIMESTAMP;
     }
 
-    if (!fork()) {
+    pid_t pid = fork();
+    if (pid < 0) {
+        return BAD;
+    }
+    if (!pid) {
         if (params->options.splitScreen) {
-            execlp("mpv", "mpv", v1, audio, time, v2, 
+            execlp("mpv", "mpv", "--really-quiet", v1, audio, time, v2, 
                     "--lavfi-complex=[vid1][vid2]hstack[vo]", NULL);
         } else if (params->options.startTime) {
-            execlp("mpv", "mpv", v1, audio, time, NULL);
+            execlp("mpv", "mpv", "--really-quiet", v1, audio, time, NULL);
         } else {
-            execlp("mpv", "mpv", v1, audio, time, NULL);
+            execlp("mpv", "mpv", "--really-quiet", v1, audio, time, NULL);
         }
-        return BAD_PLAY;
+        _exit(BAD);
     }
     free(time);
     free(audio);
     free(v1);
     free(v2);
-    wait(NULL);
-    return GOOD;
+
+    int status;
+    waitpid(pid, &status, 0);
+    if (WIFEXITED(status)) {
+        return WEXITSTATUS(status);
+    }
+    return BAD;
 }
 
 double get_mp4_dur(char* path) 
@@ -198,13 +180,19 @@ double get_mp4_dur(char* path)
     char* cmd = "ffprobe -v error -show_entries format=duration "
                 "-of default=noprint_wrappers=1:nokey=1 %s";
     cmd = buildArgs(cmd, path);
+    
+    // Creates a pipe that pushes the output into stdin
     FILE* fp = popen(cmd, "r");
     double duration;
+    // Dirty read from stdin
     fscanf(fp, "%lf", &duration);
     pclose(fp);
     return duration;
 }
 
+/*
+ * Converts from timestamp in format HH;MM;SS to seconds
+ */
 bool check_dur_v_timestamp(double duration, char* timestamp)
 {
     double hrs = 10*(timestamp[0]-'0') + (timestamp[1]-'0');

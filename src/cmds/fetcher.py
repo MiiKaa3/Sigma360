@@ -15,9 +15,8 @@ class Fetcher():
                 self.session = self.load_session("/src/cmds/cookies.json")
     
     # Functionality that retrieves and makes courses.json
-    def load(self, outfile:str="../../courses.json"):
+    def load(self, outfile:str="courses.json"):
         if not self.check_auth():
-            print("Failed authentication")
             return 1
         
         data = self.session.get("https://echo360.net.au/user/enrollments").json()
@@ -164,18 +163,14 @@ class Fetcher():
         expired = {k:v for k,v in expiries.items() if v < now + 300}
         if expired:
             details = ", ".join(f"{k} (expired {int(now - v)}s ago)" for k, v in expired.items())
-            print(f"Cookie(s) expired: {details}")
             return False 
     
         if expiries:
             soonest_label, soonest_time = min(expiries.items(), key=lambda kv: kv[1])
             remaining = int(soonest_time - now)
-            print(f"Local check ok. Earliest expiry: {soonest_label} in {remaining}s "
-                  f"({remaining // 60} min).")
     
         resp = self.session.get("https://echo360.net.au/user/enrollments", allow_redirects=True)
         if resp.status_code != 200 or "login" in resp.url.lower():
-            print("Server rejected session — cookies invalid despite local expiry check passing.")
             return False 
         
         return True
@@ -237,13 +232,11 @@ def main():
     if args.load:
         outfile = args.load
         fetcher = Fetcher()
-        print(f"Fetcher will load, saving to {outfile}")
         code = fetcher.load(outfile)
 
     elif args.watch:
         path = args.watch
         fetcher = Fetcher()
-        print(f"Fetcher will fetch this lecture: {path}") 
         code = fetcher.watch(path)
 
     elif args.thumbnails:

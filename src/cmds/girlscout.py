@@ -1,4 +1,5 @@
 from playwright.sync_api import sync_playwright, TimeoutError
+import sys
 import os
 import requests
 import json
@@ -88,21 +89,21 @@ def main():
     if os.path.exists(COOKIE_FILE):
         valid = check_auth(COOKIE_FILE)
     else:
-        print("No cookies found")
+        print("No cookies found", file=sys.stderr)
         valid = False
 
     if not valid:
-        print("Fetching fresh cookies...")
+        print("Fetching fresh cookies...", file=sys.stderr)
         get_echo360_cookies(COOKIE_FILE)
         valid = check_auth(COOKIE_FILE)
         if valid:
-            print("Cookies validated")
+            print("Cookies validated", file=sys.stderr)
             return 0
         else:
-            print("Still invalid after fresh login. Did you login?")
+            print("Unable to validate cookies. Try restarting and logging in again.", file=sys.stderr)
             return 2
 
-    return valid
+    return 0
 
 if __name__ == "__main__":
     main()
