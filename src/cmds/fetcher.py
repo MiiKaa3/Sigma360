@@ -50,7 +50,7 @@ class Fetcher():
     # Functionality that retrieves the video files for a certain lecture
     def watch(self, output_path:str):
         if not self.check_auth():
-            return 1
+            return 13
         
         section_id, lecture_number = output_path.split("/")[-2:]
         lecture_number = lecture_number[7:]
@@ -61,7 +61,7 @@ class Fetcher():
 
         medias = target["lesson"]["medias"]
         if len(medias) == 0:
-            return 2
+            return 13
 
         media_id = medias[0]["id"]  # mediaId is shared across sources for one lesson
 

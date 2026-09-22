@@ -1,4 +1,5 @@
-#pragma once
+#ifndef NAVIGATION_H
+#define NAVIGATION_H
 
 #include <stdbool.h>
 #include <cjson/cJSON.h>
@@ -17,6 +18,10 @@ typedef struct {
     bool        downloaded;
 } Lecture;
 
+/**
+ * Structure that store all necessary information attached to a course.
+ * (Tried to debloat the course struct but maybe thats not necessary?)
+ */
 typedef struct {
     /// Code of course
     char*       courseCode;
@@ -29,6 +34,7 @@ typedef struct {
     /// Flag to see if the course is currently studied
     bool        isActive;
 } CourseData;
+
 /**
  * Structure that defines a single Course.
  */
@@ -84,3 +90,5 @@ int get_currLec(Cursor* cursor);
 int* get_topCourse(Cursor* cursor);
 
 int* get_topLecture(Cursor* cursor);
+
+#endif // NAVIGATION_H

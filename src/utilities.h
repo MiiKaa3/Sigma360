@@ -1,5 +1,10 @@
-#ifndef SIGMA360_UTILITIES_H
-#define SIGMA360_UTILITIES_H
+/**
+ * @file utilities.h
+ * @author sammado103, MiiKaa3
+ * @brief Header for utilities.c. See utilities.c for more info.
+ */
+#ifndef UTILITIES_H
+#define UTILITIES_H
 
 #include <stdbool.h>
 #include <cjson/cJSON.h>
@@ -10,16 +15,16 @@ int build_tree(char** root);
 
 char* buildArgs(char* option, char* var);
 
-int get_courses_json(char* filename, cJSON** json);
-
 void sort_cjson_array(cJSON *array);
 
-bool is_dir_empty(char* dir);
+int is_lec_downloaded(char* dir);
 
 void expand_path(char** path);
 
-char* buildLec(char* option, int num);
+char* buildLec(int num);
 
 char* build_dir(char* root, char* url, int lectureNum);
 
-#endif // SIGMA360_UTILITIES_H
+int read_courses_json(char* filename, cJSON** json);
+
+#endif // UTILITIES_H

@@ -22,9 +22,9 @@ def get_echo360_cookies(cookie_file: str = "cookies.json"):
         try:
             page.wait_for_url("https://echo360.net.au/content", timeout=3_000_000)
         except TimeoutError:
-            print("Timed out waiting for login — closing browser...")
+            # print("Timed out waiting for login — closing browser...")
             browser.close()
-            return 7
+            return 11 
         
         cookies = context.cookies()
         with open(COOKIE_FILE, "w") as f:
@@ -101,8 +101,7 @@ def main():
             return 0
         else:
             print("Unable to validate cookies. Try restarting and logging in again.", file=sys.stderr)
-            return 2
-
+            return 11 
     return 0
 
 if __name__ == "__main__":

@@ -1,9 +1,24 @@
-#ifndef SIGMA360_TUI_IMAGE_H
-#define SIGMA360_TUI_IMAGE_H
+#ifndef TUI_IMAGE_H
+#define TUI_IMAGE_H
 
 #include <notcurses/notcurses.h>
+#include "tui.h"
 
-int sigma360_tui_image_show(struct ncplane *panel, const char *path);
-void sigma360_tui_image_clear(void);
+/**
+ * Stores important information any image displayed in a pane. Attached to a 
+ * ncplane* structure via the userptr.
+ */
+typedef struct {
+    /// The absolute path of the image being displayed
+    char* image;
+    /// The notcurses interpretation of the image, for blitting purposes
+    struct ncvisual* ncimage;
+} imageData;
 
-#endif
+int preview_image_show(Pane* preview, const char* path);
+
+void preview_image_clear(Pane* preview);
+
+void cleanup_image(Pane* preview);
+
+#endif // TUI_IMAGE_H

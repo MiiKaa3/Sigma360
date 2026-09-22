@@ -1,11 +1,16 @@
+/**
+ * @file main.c
+ * @author MiiKaa3
+ * @brief The entry into the program. 
+ */
 #include <stdio.h>
 #include <string.h>
 
 #include "tui.h"
 #include "const.h"    
 
-void version_msg(void);
-void usage_msg(void);
+void version_msg();
+void usage_msg();
 
 int main(int argc, char **argv) 
 {
@@ -15,29 +20,27 @@ int main(int argc, char **argv)
             version_msg();
         } else if (strcmp(argv[1], "--help") == 0) {
             usage_msg();
-        } else if (strcmp(argv[1], "--tui") == 0) {
-            exitCode = sigma360_tui();
         } else {
-            fprintf(stderr, "[ERROR] Unknown argument: %s\n", argv[1]);
-            usage_msg();
-            return 1;
-        }
+            fprintf(stder, MAIN_USAGE);
+            return BAD_USAGE;
     } else {
         exitCode = sigma360_tui();
     }
-
     return exitCode;
 }
 
-void version_msg(void){
-    printf("Sigma360 version 0.1.0\n");
+/**
+ * Prints to stdout the current version number of Sigma360.
+ */
+void version_msg()
+{
+    printf(mainUsage);
 }
 
-void usage_msg(void) {
-    printf("Usage: sigma360 [arguments]\n");
-    printf("Arguments:\n");
-    printf("  --version   Show version information\n");
-    printf("  --help      Show this help message\n");
-    printf("  --cli       Enter CLI mode\n");
-    printf("  --tui       Enter TUI mode\n");
+/**
+ * Prints to stdout the help message.
+ */
+void usage_msg()
+{
+    printf(mainHelp);
 }

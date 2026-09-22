@@ -22,125 +22,164 @@
 #include <sys/wait.h>
 #include <fcntl.h>
 
-#define DETAILS_MIN_COLS 10
-#define HELP_ROWS 3
-
 bool window_too_small = false;
-
-typedef struct {
-    struct ncplane *frame;
-    struct ncplane *content;
-} pane_t;
-
-typedef struct {
-    pane_t parent;
-    pane_t current;
-    pane_t preview;
-    pane_t help;
-} panes_t;
-
-typedef enum {
-    ROLE_PARENT,
-    ROLE_CURRENT,
-    ROLE_PREVIEW,
-} panerole_t;
 
 // ------------------------------------------- //
 // Panes                                       //
 // ------------------------------------------- //
 
-static void destroy_pane(pane_t *pane) {
+/**
+ * Empties a Pane instance by destroying content and frame panes given they
+ * exist.
+ * @param pane Pane to empty.
+ */
+static void destroy_pane(Pane* pane)
+{
     if (pane->content != NULL) {
         ncplane_destroy(pane->content);
+        pane->content = NULL;
     }
     if (pane->frame != NULL) {
         ncplane_destroy(pane->frame);
+        pane->frame = NULL;
     }
-    pane->frame = NULL;
-    pane->content = NULL;
 }
 
-static void destroy_panes(panes_t *panes) {
-    destroy_pane(&panes->parent);
-    destroy_pane(&panes->current);
-    destroy_pane(&panes->preview);
-    destroy_pane(&panes->help);
+/**
+ * Clears the screen and cleans up each pane. Currently only the preview pane
+ * can have images drawn to them, and so only this pane's userptr is handled
+ * if existant.
+ * @param screen Screen to empty.
+ */
+static void destroy_screen(Screen* screen)
+{
+    destroy_pane(&screen->parent);
+    destroy_pane(&screen->current);
+    imageData* data = ncplane_userptr(&screen->preview);
+    if (data) {
+        cleanup_image(&screen->preview);
+    }
+    destroy_pane(&screen->preview);
+    destroy_pane(&screen->help);
 }
 
-static int make_pane(struct ncplane *std, pane_t *pane, 
-        int y, int x, unsigned rows, unsigned cols, uint32_t border_rgb) {
+/**
+ * Populates a Pane instance with a frame and content ncplanes. Content plane
+ * depends on frame details.
+ * @param std       The standard plane for the window.
+ * @param pane      A pointer to the pane for population.
+ * @param frameOpts Options for the frame to be built. Mimimum requirements are
+ *      .x, .y, .rows, and .cols populated
+ * @param roles     The role the pane will have, see const.h paneroles enum
+ *      for roles
+ * @returns
+ *      BAD_SIZE    given the frameOpts describes too small a frame.
+ *      BAD_FRAME   given failure to create frame or contents panes.
+ *      GOOD        upon success.
+ *
+ */
+static int make_pane(struct ncplane* std, Pane* pane, 
+        struct ncplane_options frameOpts, panerole role)
+{
     pane->frame = NULL;
     pane->content = NULL;
 
-    if (rows < 3 || cols < 3) {
-        return -1; // not enough space for a pane
+    if (frameOpts.rows < MIN_ROWS || frameOpts.cols < MIN_COLS) {
+        return BAD_SIZE; // not enough space for a pane
     }
     
-    struct ncplane_options fopts = {
-        .y = y,
-        .x = x,
-        .rows = rows,
-        .cols = cols,
-    };
-    pane->frame = ncplane_create(std, &fopts);
-    if (pane->frame == NULL) {
-        return -1;
+    pane->frame = ncplane_create(std, &frameOpts);
+    if (pane->frame == NULL) { // Make sure pane was created.
+        return BAD_FRAME;
     }
 
     uint64_t channels = 0;
-    ncchannels_set_fg_rgb(&channels, border_rgb);
+    ncchannels_set_fg_rgb(&channels, 
+            role == ROLE_CURRENT ? COL_BORDER_ACTIVE : COL_BORDER_DIM);
     ncplane_perimeter_rounded(pane->frame, 0, channels, 0);
 
-    struct ncplane_options copts = {
-        .y = 1,
-        .x = 1,
-        .rows = rows - 2,
-        .cols = cols - 2,
+    struct ncplane_options contentOpts = {
+        .y = 1, // Where the top left corner is. Move one in and down 
+        .x = 1, // so as to not be overlapping the border
+        .rows = frameOpts.rows - 2, // -2 Because of border top and bottom,
+        .cols = frameOpts.cols - 2, // and left and right
     };
-    pane->content = ncplane_create(pane->frame, &copts);
-    if (pane->content == NULL) {
+    pane->content = ncplane_create(pane->frame, &contentOpts);
+    if (pane->content == NULL) { // Make sure pane was created.
         destroy_pane(pane);
-        return -1;
+        return BAD_FRAME;
     }
-
-    return 0;
+    return GOOD;
 }
 
-static int layout_panes(struct notcurses *nc, panes_t *panes) {
-    struct ncplane *std = notcurses_stdplane(nc);
-    unsigned rows, cols;
+/**
+ * Generated the panes for the screen, and places them on the screen. Lots
+ * of magical numbers. This is where you go to change pane dimenions at any 
+ * point.
+ * @param nc     The notcurses struct containing the panes that can be drawn.
+ * @param screen The screen to be populated with panes.
+ * @returns
+ *      BAD_SIZE    given the screen size cannot accomodate panes.
+ *      exitCode    given any make_pane calls fail, return the exit status of
+ *          said call
+ *      GOOD        upon success.
+ */
+static int layout_panes(struct notcurses* nc, Screen* screen) 
+{
+    struct ncplane* std = notcurses_stdplane(nc);
+    unsigned rows;
+    unsigned cols;
     ncplane_dim_yx(std, &rows, &cols);
 
-    unsigned parentw = 55;
+    unsigned parentW = 55;
 
-    if (rows < HELP_ROWS + 3 || cols < parentw + 8) {
-        return -1; // not enough space for the columns plus the help bar
+    if (rows < HELP_ROWS + MIN_ROWS || cols < parentW + (3 * MIN_COLS)) {
+        return BAD_SIZE; // not enough space for the columns plus the help bar
     }
 
-    unsigned bodyh = rows - HELP_ROWS;
-    unsigned remaining = cols - parentw;
-    unsigned currentw = (remaining * 2) / 5;
-    unsigned previeww = remaining - currentw;
+    unsigned bodyH = rows - HELP_ROWS;
+    unsigned remaining = cols - parentW;
+    unsigned currentW = (remaining * 2) / 5;
+    unsigned previewW = remaining - currentW;
 
-    if (make_pane(std, &panes->parent,  
-                0, 0, bodyh, parentw,  COL_BORDER_DIM) != 0
-        || make_pane(std, &panes->current, 
-                0, (int)parentw, bodyh, currentw, COL_BORDER_ACTIVE) != 0
-        || make_pane(std, &panes->preview, 
-            0, (int)(parentw + currentw), bodyh, previeww, COL_BORDER_DIM) != 0
-        || make_pane(std, &panes->help, 
-            (int)bodyh, 0, HELP_ROWS, cols, COL_BORDER_DIM) != 0) {
-        destroy_panes(panes);
-        return -1;
+    if ((exitCode = make_pane(std, &screen->parent, (struct ncplane_plane)
+                {.y=0, .x=0, .rows=bodyH, .cols=parentW}, 
+                ROLE_PARENT))) { // Build parent contents
+        destroy_screen(screen);
+        return exitCode;
+    }
+    if ((exitCode = make_pane(std, &screen->current, (struct ncplane_options)
+                {.y=0, .x=(int)parentW, .rows=bodyH, .cols=currentW}, 
+                ROLE_CURRENT))) { // Build current contents
+        destroy_screen(screen);
+        return exitCode;
+    }
+    if ((exitCode = make_pane(std, &screen->preview, (struct ncplane_options)
+                {.y=0, .x=(int)(parentW+currentW), .rows=bodyH, .cols=previewW},
+                ROLE_PARENT))) { // Build preview contents
+        destroy_screen(screen);
+        return exitCode;
+    }
+    if ((exitCode = make_pane(std, &screen->help, (struct ncplane_options)
+                {.y=(int)bodyH, .x=0, .rows=HELP_ROWS, .cols=cols}, 
+                ROLE_HELP))) { // Build help contents
+        destroy_screen(screen);
+        return exitCode;
     }
 
-    return 0;
+    return GOOD;
 }
 
 // ------------------------------------------- //
 // Rendering                                   //
 // ------------------------------------------- //
 
+/**
+ * Calculates what the top most object in a pane is. Given more objects in a 
+ * pane then rows this is non-trivial. Otherwise its as expected.
+ * @param cursor A pointer to the program's cursor.
+ * @param rows   The number of available rows a pane has.
+ */
 static void clamp_view(Cursor* cursor, int rows) 
 {
     if (rows == 0) {
@@ -165,6 +204,10 @@ static void clamp_view(Cursor* cursor, int rows)
     }
 }
 
+/**
+ * Draws the logo to the desired plane. 
+ * @param p Plane to be drawn to.
+ */
 static void draw_logo(struct ncplane* p)
 {
     const char* const logo[] = {
@@ -187,6 +230,15 @@ static void draw_logo(struct ncplane* p)
     ncplane_set_fg_default(p);
 }
 
+/**
+ * Draws the courses to the desired plane. Currently studied courses are
+ * highlighted with COL_ACTIVE_COURSE (see const.h). Currently selected course's
+ * background is highlighted with COL_SEL_BG_ACTIVE (see cont.h).
+ * @param p      Plane to be drawn to.
+ * @param cursor A pointer to the program's cursor instance.
+ * @param role   The role of the plane, be it parent, current, or preview.
+ * @param dims   The dimensions of the plane to draw to.
+ */
 static void draw_courses(struct ncplane* p, Cursor* cursor, 
         panerole_t role, unsigned* dims)
 {
@@ -215,6 +267,14 @@ static void draw_courses(struct ncplane* p, Cursor* cursor,
     }
 }
 
+/**
+ * Draws the lectures to the desired plane. Currently selected lecture's
+ * background is highlighted with COL_SEL_BG_ACTIVE (see cont.h).
+ * @param p      Plane to be drawn to.
+ * @param cursor A pointer to the program's cursor instance.
+ * @param role   The role of the plane, be it parent, current, or preview.
+ * @param dims   The dimensions of the plane to draw to.
+ */
 static void draw_lectures(struct ncplane* p, Course* course, 
         panerole_t role, unsigned* dims)
 {
@@ -228,8 +288,7 @@ static void draw_lectures(struct ncplane* p, Course* course,
         if (i == course->lectureSel) {
             ncplane_set_bg_rgb(p, (role == ROLE_CURRENT) ? 
                     COL_SEL_BG_ACTIVE : COL_SEL_BG_IDLE);
-            ncplane_set_fg_rgb(p, course->data->isActive ? 
-                    COL_ACTIVE_COURSE : COL_SEL_FG);
+            ncplane_set_fg_rgb(p, COL_SEL_FG);
         } else {
             ncplane_set_bg_default(p);
             ncplane_set_fg_rgb(p, COL_TEXT_DEF);
@@ -239,6 +298,12 @@ static void draw_lectures(struct ncplane* p, Course* course,
     }
 }
 
+/**
+ * Draws the plane contents to the display buffer for rendering. 
+ * @param p      Plane to be drawn to.
+ * @param cursor A pointer to the program's cursor instance.
+ * @param role   The role of the plane, be it parent, current, or preview.
+ */
 static void draw_pane(struct ncplane* p, Cursor* cursor, panerole_t role)
 {
     if (!p || !cursor) { // Might need to check for no lectures or courses?
@@ -269,14 +334,19 @@ static void draw_pane(struct ncplane* p, Cursor* cursor, panerole_t role)
     ncplane_set_fg_default(p);
 }
 
-static void draw_help(const pane_t *help) {
+/**
+ * Draws the keybind help pane to the bottom of screen.
+ * @param help A pointer to the program's screen.help Pane. 
+ */
+static void draw_help(const Pane* help) 
+{
     struct ncplane *p = help->content;
     if (!p) {
         return;
     }
     ncplane_erase(p);
  
-    static const struct { const char *key; const char *desc; } binds[] = {
+    const keybind binds[] = {
         { "q/esc",   "quit"  },
         { "enter",   "watch" },
         { "t",       "watch at time"},
@@ -286,14 +356,14 @@ static void draw_help(const pane_t *help) {
         { "k/up",    "up"    },
         { "l/right", "into"  },
         { "shift+[watch]", "split screen"},
-    };
+    }
  
     int x = 1;
     for (size_t i = 0; i < sizeof binds / sizeof *binds; i++) {
         int w;
  
         ncplane_set_fg_rgb(p, COL_HELP_KEY);
-        w = ncplane_putstr_yx(p, 0, x, binds[i].key);
+        w = ncplane_putstr_yx(p, 0, x, binds[i].keys);
         if (w < 0) {
             break; // ran out of pane width
         }
@@ -306,39 +376,41 @@ static void draw_help(const pane_t *help) {
         }
         x += w;
     }
- 
     ncplane_set_fg_default(p);
 }
 
-static void draw_all(panes_t* panes, Cursor* cursor) {
+/**
+ * Draws all panes to the screen.
+ * @param screen A pointer to the program's screen instance.
+ * @param cursor A pointer to the program's cursor instance.
+ */
+static void draw_all(Screen* screen, Cursor* cursor)
+{
     // Draw left (parent) pane
-    draw_pane(panes->parent.content, cursor, ROLE_PARENT);
+    draw_pane(screen->parent.content, cursor, ROLE_PARENT);
     // Draw middle (active) pane
-    draw_pane(panes->current.content, cursor, ROLE_CURRENT);
+    draw_pane(screen->current.content, cursor, ROLE_CURRENT);
     // Draw right (preview) pane
-    draw_pane(panes->preview.content, cursor, ROLE_PREVIEW);
-    draw_help(&panes->help);
+    draw_pane(screen->preview.content, cursor, ROLE_PREVIEW);
+    draw_help(&screen->help);
 }
 
 // ------------------------------------------- //
 // Main                                        //
 // ------------------------------------------- //
 
-static int watch_lec(char* dir, bool split, char* time);
-void dispatch_watch(Cursor* cursor, char* root, bool ss, char* time);
-int get_timestamp(struct notcurses* nc, char** timestamp);
-void build_download_box(struct notcurses* nc, struct ncplane** box);
-
 int sigma360_tui(void) {
 
     int exitCode = GOOD;
+
+    // SETUP ROUTINE
 
     if ((exitCode = get_cookies())) {
         return exitCode;
     }
 
     cJSON* json;
-    if ((exitCode = get_courses_json(coursesJSON, &json))) {
+    if ((exitCode = read_courses_json(coursesJSON, &json))) {
         return exitCode;
     }
     sort_cjson_array(json);
@@ -348,12 +420,8 @@ int sigma360_tui(void) {
         return exitCode;
     }
 
-    // THUMBNAILS FETCHER HERE
-    pid_t thumb = fork();
-    if (!thumb) {
-        execlp("python3", "python3", fetcher, "--thumbnail", root, NULL);
-        _exit(BAD);
-    }
+    pid_t thumbGetter = fork();
+    get_thumbnails(root, &thumbGetter);
 
     Cursor cursor;
     if (init_cursor(&cursor, json) != 0) {
@@ -371,21 +439,26 @@ int sigma360_tui(void) {
         return 1;
     }
 
-    panes_t panes = {0};
-    if (layout_panes(nc, &panes) != 0) {
+    Screen screen = { 0 };
+    if (layout_panes(nc, &screen) != 0) {
         notcurses_stop(nc);
         cJSON_Delete(json);
         return BAD_PANES;
     }
 
-    draw_all(&panes, &cursor);
+    draw_all(&screen, &cursor);
     notcurses_render(nc);
 
+    // END OF SETUP ROUTINE
+
+    // USER INTERACTION ROUTINE
+
     struct ncinput ni;
-    for (;;) {
+    while (1) {
+        // Block until keyboard input
         uint32_t id = notcurses_get_blocking(nc, &ni);
 
-        if (id == (uint32_t)-1) {
+        if (id == (uint32_t) -1) {
             break; // error
         }
         if (ni.evtype == NCTYPE_RELEASE) {
@@ -397,11 +470,12 @@ int sigma360_tui(void) {
         if (id == 'q' || id == NCKEY_ESC) {
             if (!fork()) {
                 execlp("rm", "rm", "-rf", root, NULL);
+                execlp("rm", "rm", coursesJSON, NULL);
                 _exit(BAD);
             }
             
             wait(NULL);
-            /* waitpid(thumb, NULL, 0); */
+            waitpid(thumbGetter, NULL, 0);
             break; // quiting out
         }
 
@@ -411,14 +485,14 @@ int sigma360_tui(void) {
                 continue;   // couldn't re-fetch; try again on the next event
             }
         
-            destroy_panes(&panes);
-            if (layout_panes(nc, &panes) != 0) {
+            destroy_screen(&screen);
+            if (layout_panes(nc, &screen) != 0) {
                 window_too_small = true;
                 continue;
             }
             window_too_small = false;
         
-            draw_all(&panes, &cursor);
+            draw_all(&screen, &cursor);
             notcurses_render(nc);
             continue;
         }
@@ -444,7 +518,7 @@ int sigma360_tui(void) {
                 char* dir = build_dir(root, 
                         get_courseKey(&cursor), (int) get_currLec(&cursor) + 1);
                 // Check if there's anything in it.
-                if (is_dir_empty(dir)) {
+                if (!is_lec_downloaded(dir)) {
                     struct ncplane* box = NULL;
                     build_download_box(nc, &box);
                     watch_lec(dir, false, "00;00;00");
@@ -457,7 +531,7 @@ int sigma360_tui(void) {
                 free(dir);
             }
         } else if (id == 's') {
-            /* sigma360_tui_image_clear(); */
+            /* preview_image_clear(); */
             /* sigma360_tui_save(nc, &cursor, root); */
         } else if (id == NCKEY_ENTER && ni.shift) {
             dispatch_watch(&cursor, root, true, "00;00;00");
@@ -480,34 +554,27 @@ int sigma360_tui(void) {
         }
 
         // Generate preview image. This doesn't work well, see TODO
-        if (cursor.level > 0 
-                && get_lecCount(&cursor) > 0) {
-            char imgfile[4096];
+        if (cursor.level == DEEPEST_LEVEL) {
             char* dir = build_dir(root, 
                     get_courseKey(&cursor), (int) get_currLec(&cursor) + 1);
-            char temp[4096];
-            sprintf(temp, "%s/t.jpg", dir);
-            // man access
-            if (access(temp, F_OK) == 0) {
-                sigma360_tui_image_show(panes.preview.content, temp);
-            } else {
-                sprintf(imgfile, "./previewless.jpg");
-                sigma360_tui_image_show(panes.preview.content, imgfile);
-            }
+            expand_path(&dir);
+            char* thumbnail = buildArgs(dir, "t.jpg");
             free(dir);
-        } else {
-            sigma360_tui_image_clear();
+            if (access(temp, F_OK) == 0) { // man access
+                preview_image_show(&screen.preview, thumbnail);
+            } else {
+                preview_image_show(&screen.preview, defaultImage);
+            }
+            free(thumbnail);
         }
-        notcurses_render(nc);
-
-        draw_all(&panes, &cursor);
+        draw_all(&screen, &cursor);
         notcurses_render(nc);
     }
 
-    destroy_panes(&panes);
+    destroy_screen(&screen);
     notcurses_stop(nc);
     cJSON_Delete(json);
-    // Is this the correct exit code?
+    destruct_cursor(cursor);
     return GOOD;
 }
 
@@ -585,7 +652,7 @@ int get_timestamp(struct notcurses* nc, char** timestamp)
         ncplane_putstr_yx(popup, 1, 2, 
                 "Enter a start time for the lecture (HH;MM;SS): ");
         ncplane_putstr_yx(popup, 3, 2, *timestamp);
-        sigma360_tui_image_clear();
+        preview_image_clear();
         notcurses_render(nc);
 
         struct ncinput ni;
@@ -641,7 +708,7 @@ void build_download_box(struct notcurses* nc, struct ncplane** box)
         ncplane_set_fg_rgb(*box, COL_HELP_DESC);
         ncplane_set_bg_rgb(*box, 0x000000);
         ncplane_putstr_yx(*box, 1, 2, "downloading...");
-        sigma360_tui_image_clear();
+        preview_image_clear();
         notcurses_render(nc);
     }
 }

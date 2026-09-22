@@ -25,6 +25,7 @@
         > proper exit cleanup routine
         > Want to delete "downloading" box once downloaded and before playing
         > Need to formalise pathing from cmds run (i.e. the fetcher.py problem)
+        > buildArgs is dirty code.
 
 4. EXTRA FUNCTIONALITY
     - Create a .conf file containing: 
@@ -34,4 +35,9 @@
     - Have some sort of binary that can open sigma360 anywhere in the system
     - Have a "playing" box when video is playing.
     - Signal handling?
-
+    - Dynamically sized panes to fit other things in? Panes are currently fixed
+      size and have a lot of wasted space. Could minimise this? Or least least
+      have different pane widths for each level?
+    - Multiple images per pane? At the moment only on per pane is supported
+    - If the user hovers over a lecture for long enough (like 5 seconds) play a 
+      preview of the lecture (choose the halfway of a lecture or something)
