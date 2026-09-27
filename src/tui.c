@@ -455,10 +455,13 @@ int sigma360_tui(void) {
 
     struct ncinput ni;
     while (1) {
+        // De-render user's cursor. Not required and certain configurations
+        // mess with rendering
+        notcurses_cursor_disable(nc);
         // Block until keyboard input
         uint32_t id = notcurses_get_blocking(nc, &ni);
 
-        if (id == (uint32_t) -1) {
+        if (id == (uint32_t) - 1) {
             break; // error
         }
         if (ni.evtype == NCTYPE_RELEASE) {
@@ -530,7 +533,7 @@ int sigma360_tui(void) {
                 }
                 free(dir);
             }
-        } else if (id == 's') {
+        } else if (id == 's' && cursor.level > 0) { // Only save lectures
             /* preview_image_clear(); */
             /* sigma360_tui_save(nc, &cursor, root); */
         } else if (id == NCKEY_ENTER && ni.shift) {
@@ -618,8 +621,8 @@ struct ncplane* build_popup(struct notcurses* nc, int rows, int cols)
     unsigned planeCols;
     ncplane_dim_yx(stdplane, &planeRows, &planeCols);
 
-    int x = ((int)planeCols - cols) / 2;
-    int y = ((int)planeRows - rows) / 2;
+    int x = ((int) planeCols - cols) / 2;
+    int y = ((int) planeRows - rows) / 2;
 
     struct ncplane_options nopts = {
         .x = x,
@@ -631,7 +634,6 @@ struct ncplane* build_popup(struct notcurses* nc, int rows, int cols)
 
     ncplane_set_bg_rgb8(popup, 0, 0, 0);
     ncplane_set_fg_rgb8(popup, 255, 255, 255);
-    ncplane_set_base(popup, " ", 0, ncplane_channels(popup));
 
     return popup;
 }
@@ -702,7 +704,6 @@ void build_download_box(struct notcurses* nc, struct ncplane** box)
         uint64_t ch = 0;
         ncchannels_set_fg_rgb(&ch, COL_SEL_FG);
         ncchannels_set_bg_rgb(&ch, 0x000000);
-        ncplane_set_base(*box, " ", 0, ch);
         ncchannels_set_fg_rgb(&ch, COL_BORDER_ACTIVE);
         ncplane_perimeter_rounded(*box, 0, ch, 0);
         ncplane_set_fg_rgb(*box, COL_HELP_DESC);

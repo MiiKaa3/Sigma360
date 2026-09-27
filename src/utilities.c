@@ -12,6 +12,7 @@
 #include <dirent.h>
 
 #include <cjson/cJSON.h>
+#include <notcurses/notcurses.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <sys/wait.h>
@@ -311,4 +312,56 @@ char* build_dir(char* root, char* url, int lecNum)
     char* lecture = buildArgs(course, lecName);
     free(course);
     return lecture;
+}
+
+int build_popup(struct notcurses* nc, struct notcurses** box, 
+        int rows, int cols)
+{
+    struct ncplane* stdplane = notcurses_stdplane(nc);
+    unsigned planeRows;
+    unsigned planeCols;
+    ncplane_dim_yx(stdplane, &planeRows, &planeCols);
+
+    if (planeRows < rows || planeCols < cols) {
+        return BAD_SIZE; // Box cannot fit in window
+    }
+
+    int x = ((int) planeCols - cols) / 2;
+    int y = ((int) planeRows - rows) / 2;
+
+    struct ncplane_options nopts = {
+        .x = x,
+        .y = y,
+        .rows = (unsigned)rows,
+        .cols = (unsigned)cols,
+    };
+    *box = ncplane_create(stdplane, &nopts);
+    if (!*box) {
+        return BAD;
+    }
+
+    return GOOD;
+}
+
+int build_reader(struct ncplane* box, struct ncreader** reader,
+        struct ncplane_options options)
+{
+    struct ncplane* readPlane = ncplane_create(box, &options);
+    if (!readPlane) {
+        return BAD;
+    }
+
+    struct ncreader_options readerOpts = { 0 };
+    ncchannels_set_fg_rgb(&readerOpts.tchannels, COL_SEL_FG);
+    ncchannels_set_bg_rgb(&readerOpts.tchannels, COL_MODAL_BG);
+    // Set the plane to increase in size vertically given long input
+    // and show cursor within pane
+    // >>>OPTION TO PLAY WITH<<<
+    readerOpts.flags = NCREADER_OPTION_CURSOR | NCREADER_OPTION_HORSCROLL;
+    *reader = ncreader_create(readPlane, *readerOpts);
+    if (!*reader) {
+        ncplane_destroy(readPlane);
+        return BAD;
+    }
+    return GOOD;
 }

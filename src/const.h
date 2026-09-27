@@ -14,6 +14,9 @@
 #define HELP_ROWS         3  // The number of rows the HELP pane takes up
 #define MIN_COLS          3  // The minimum number of columns a pane can have
 #define MIN_ROWS          3  // The minimum number of rows a pane can have
+#define DEEPEST_LEVEL     1   // Defines the deepest level the cursor can take
+#define SAVE_BOX_H        5
+#define SAVE_BOX_W        60
 
 #define COL_TEXT_DEF      0xf0f0f0
 #define COL_BORDER_DIM    0x6272a4u
@@ -57,6 +60,7 @@ extern const char* const girlScout;
 #define BAD_PANE        16
 #define BAD_SIZE        17
 #define BAD_IMAGE       18
+#define BAD_SAVE        19
 
 /*  ERROR MESSAGES      */
 

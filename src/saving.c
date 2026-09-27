@@ -203,26 +203,28 @@ static int save_lecture(struct notcurses *nc, struct ncplane *box, nav_t *nav,
 
 static char *save_lecture_name(nav_t *nav);
 
-static int sigma360_tui_save(struct notcurses *nc, nav_t *nav, const char *root) {
-    struct ncplane *std = notcurses_stdplane(nc);
-    unsigned rows, cols;
+int save_lecture(struct notcurses* nc, Cursor* cursor, const char* root)
+{
+    struct ncplane* std = notcurses_stdplane(nc);
+    unsigned rows;
+    unsigned cols;
     ncplane_dim_yx(std, &rows, &cols);
 
-    unsigned boxh = 5;
-    unsigned boxw = (cols > 60) ? 60 : cols;
-    if (rows < boxh || boxw < 20) {
-        return -1; // no room for the dialog
+    unsigned boxH = SAVE_BOX_H;
+    unsigned boxW = (cols > SAVE_BOX_W) ? SAVE_BOX_W : cols;
+    if (rows < boxH || boxW < 20) {
+        return BAD_SIZE; // no room for the dialog
     }
 
-    struct ncplane_options bopts = {
-        .y = (int)(rows - boxh) / 2,
-        .x = (int)(cols - boxw) / 2,
-        .rows = boxh,
-        .cols = boxw,
+    struct ncplane_options boxOpts = {
+        .y = (int) (rows - boxH) / 2,
+        .x = (int) (cols - boxW) / 2,
+        .rows = boxH,
+        .cols = boxW,
     };
-    struct ncplane *box = ncplane_create(std, &bopts);
-    if (box == NULL) {
-        return -1;
+    struct ncplane* box = ncplane_create(std, &boxOpts);
+    if (!box) {
+        return BAD_SIZE;
     }
 
     // An opaque base cell, otherwise the panes underneath show through.
@@ -241,9 +243,12 @@ static int sigma360_tui_save(struct notcurses *nc, nav_t *nav, const char *root)
     ncplane_putstr_yx(box, 1, 2, "save as:  (enter to confirm, esc to cancel)");
 
     struct ncplane_options ropts = {
-        .y = 2, .x = 2, .rows = 1, .cols = boxw - 4,
+        .y = 2, 
+        .x = 2, 
+        .rows = 1, 
+        .cols = boxW - 4,
     };
-    struct ncplane *rp = ncplane_create(box, &ropts);
+    struct ncplane* rp = ncplane_create(box, &ropts);
     if (rp == NULL) {
         ncplane_destroy(box);
         return -1;

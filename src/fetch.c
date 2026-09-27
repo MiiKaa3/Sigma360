@@ -36,14 +36,13 @@ int get_cookies()
     if (!pid) {
         execlp("python3", "python3", girlScout, NULL);
         _exit(BAD);
+    }
+    int status;
+    waitpid(pid, &status, 0);
+    if (WIFEXITED(status)) {
+        return WEXITSTATUS(status);
     } else {
-        int status;
-        waitpid(pid, &status, 0);
-        if (WIFEXITED(status)) {
-            return WEXITSTATUS(status);
-        } else {
-            return BAD;
-        }
+        return BAD;
     }
 }
 
@@ -102,6 +101,8 @@ int get_thumbnails(char* root, pid_t* pid)
         // If exec fails
         _exit(BAD);
     }
+    // Parent doesn't wait because this process takes too long to complete.
+    // Child gets reaped at end of process life.
     return GOOD;
 }
 
