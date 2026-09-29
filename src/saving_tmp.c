@@ -2,6 +2,9 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdbool.h>
+#include <unistd.h>
+#include <fcntl.h>
+#include <sys/wait.h>
 
 #include <notcurses/nckeys.h>
 #include <notcurses/notcurses.h>
@@ -9,49 +12,24 @@
 #include "navigation.h"
 #include "utilities.h"
 #include "const.h"
+#include "fetch.h"
 
 #define ESCAPE     -1
 
 static void cleanup_saving(char* strs[], struct ncplane* box)
 {
     while (strs[0]) {
-        free(strs);
+        free(strs[0]);
+        strs++;
     }
     ncplane_destroy(box);
 }
 
-static int read_popup_input(struct notcurses* nc, struct ncreader* reader,
-    char** result)
-{
-    struct ncinput input;
-    while (1) {
-        notcurses_render(nc);
-
-        uint32_t id = notcurses_get_blocking(nc, &input);
-        if (id == (uint32_t) - 1) {
-            break;
-        }
-        if (input.evtype == NCTYPE_RELEASE) {
-            continue;
-        }
-        if (id == NCKEY_ESC) {
-            break;
-        }
-        if (id == NCKEY_ENTER) {
-            return ESCAPE;
-        }
-        ncreader_offer_input(reader, &input);
-    }
-    ncreader_destroy(reader, result);
-    /* notcurses_cursor_disable(nc); */
-    return GOOD;
-}
 
 static int get_save_path(struct notcurses* nc, struct ncplane* box,
         char** path)
 {
     int exitCode = GOOD;
-    ncplane_putstr_yx(box, 1, 2, "Enter save path:");
 
     struct ncreader* reader;
     struct ncplane_options options = {
@@ -66,11 +44,10 @@ static int get_save_path(struct notcurses* nc, struct ncplane* box,
 
     // Set up reader plane and reader
     exitCode = read_popup_input(nc, reader, path);
-    ncreader_destroy(reader, NULL);
-    return GOOD;
+    return exitCode;
 }
 
-int validateMsg(struct ncplane* box, char* msg, char** newMsg)
+static int validate_msg(struct ncplane* box, char* msg, char** newMsg)
 {
     // Note - 2 as we have a border.
     unsigned height = ncplane_dim_y(box) - 2;
@@ -78,7 +55,7 @@ int validateMsg(struct ncplane* box, char* msg, char** newMsg)
 
     int size = 0;
     *newMsg = malloc(sizeof(char));
-    for (int i = 0; i < strlen(msg) && i < height * width; i++) {
+    for (int i = 0; i < (int) strlen(msg) && i < (int) (height * width); i++) {
         if (i % (int) (width - 1) == 0) {
             *newMsg = realloc(*newMsg, ++size * sizeof(char));
             (*newMsg)[size - 1] = '\n';
@@ -94,88 +71,114 @@ int validateMsg(struct ncplane* box, char* msg, char** newMsg)
 static int draw_savebox(struct notcurses* nc, struct ncplane** box, char* msg)
 {
     int exitCode = GOOD;
-    if (!*box) {
-        if ((exitCode = build_popup(nc, *box, SAVE_BOX_W, SAVE_BOX_H))) {
-            return exitCode;
-        }
-        ncplane_set_scrolling(*box, true);
+    if (*box != NULL) {
+        ncplane_destroy(*box);
     }
-    ncplane_erase(*box);
-
-    ncplane_set_bg_rgb8(*box, 0, 0, 0);
-    ncplane_set_fg_rgb8(*box, 255, 255, 255);
-
-    char* newMsg;
-    validate_msg(*box, msg, &newMsg);
-    ncplane_putstr_yx(*box, 1, 2, newMsg);
-    free(newMsg);
-    notcurses_render(nc);
-    return exitCode
-}
-
-static int draw_savebox_wait(struct notcurses* nc, 
-        struct ncplane** box, char* msg)
-{
-    int exitCode = GOOD;
-    if ((exitCode = draw_savebox(nc, box, msg))) {
+    if ((exitCode = build_popup(nc, box, SAVE_BOX_H, SAVE_BOX_W))) {
         return exitCode;
     }
+    ncplane_set_scrolling(*box, true);
 
-    // Wait until any keyboard input
+    char* newMsg;
+    ncplane_putstr_yx(*box, 1, 2, msg);
+    notcurses_render(nc);
+    return exitCode;
+}
+
+static void block_for_input(struct notcurses* nc)
+{
     struct ncinput input;
     while (true) {
         uint32_t id = notcurses_get_blocking(nc, &input);
-        if (id == (unint32) -1 || input.evtype != NCTYPE_RELEASE) {
+        if (id == (uint32_t) -1 || input.evtype != NCTYPE_RELEASE) {
             break;
         }
     }
 }
 
-static int stitch_lecture(char* desination)
+static int stitch_lecture(char* tmpDir, char* destination, char* saveName)
 {
+    const char* home = getenv("HOME");
+    int len = snprintf(NULL, 0, "%s/v1.mp4", tmpDir);
+    char* video1 = malloc(++len * sizeof(char));
+    snprintf(video1, len, "%s/v1.mp4", tmpDir);
 
-}
+    len = snprintf(NULL, 0, "%s/v2.mp4", tmpDir);
+    char* video2 = malloc(++len * sizeof(char));
+    snprintf(video2, len, "%s/v2.mp4", tmpDir);
 
-static int copy_lecture(char* lecture, char* destination)
-{
-    pid_t pid = fork();
-    if (pid < 0) {
+    len = snprintf(NULL, 0, "%s/audio.mp4", tmpDir);
+    char* audio = malloc(++len * sizeof(char));
+    snprintf(audio, len, "%s/audio.mp4", tmpDir);
+
+    len = snprintf(NULL, 0, "%s/%s/%s_1.mp4", home, destination, saveName);
+    char* leftVid = malloc(++len * sizeof(char));
+    snprintf(leftVid, len, "%s/%s/%s_1.mp4", home, destination, saveName);
+
+    len = snprintf(NULL, 0, "%s/%s/%s_2.mp4", home, destination, saveName);
+    char* rightVid = malloc(++len * sizeof(char));
+    snprintf(rightVid, len, "%s/%s/%s_2.mp4", home, destination, saveName);
+
+    pid_t left = fork();
+    pid_t right = -1;
+    if (left) {
+        right = fork();
+    }
+    if (left < 0 || (right < 0 && left)) {
         return BAD;
     }
-    
-    if (!pid) {
-       execlp("cp", "cp", "-r", lecture, destination, NULL);
-       _exit(BAD);
+    if (!left || !right) {
+        int fd = open("/dev/null", O_RDWR);
+        dup2(fd, STDOUT_FILENO);
+        dup2(fd, STDERR_FILENO);
+        close(fd);
+        char* args[] = {
+            "ffmpeg", "-nostdin", "-y",
+            "-i", (left == 0) ? video1 : video2,
+            "-i", audio,
+            "-map", "0:v:0",
+            "-map", "1:a:0",
+            "-c", "copy",
+            "-shortest",
+            (left == 0) ? leftVid : rightVid,
+            NULL
+        };
+        execvp("ffmpeg", args);
+        _exit(BAD);
     }
-    int status;
-    waitpid(pid, &status, 0);
-    if (WIFEXITED(status)) {
-        if (WEXITSTATUS(status)) {
+    int leftStatus;
+    int rightStatus;
+    waitpid(left, &leftStatus, 0);
+    waitpid(right, &rightStatus, 0);
+    if (WIFEXITED(leftStatus) || WIFEXITED(rightStatus)) {
+        if (WEXITSTATUS(leftStatus) || WEXITSTATUS(rightStatus)) {
             return BAD_SAVE;
         }
     } else {
         return BAD_SAVE;
     }
-
-    int exitCode = stitch_lecture(destination);
-    return exitCode;
+    free(video1); free(video2); free(audio); 
+    free(leftVid); free(rightVid);
+    return GOOD;
 }
 
-int save_lecture(struct notcurses* nc, Cursor* cursor, const char* root)
+int save_lecture(struct notcurses* nc, Cursor* cursor, char* root)
 {
     int exitCode = GOOD;
     char* savePath;
 
-    struct notcurses* box = NULL;
-    if ((exitCode = draw_savebox(nc, &box, "Enter save path:"))) {
+    struct ncplane* box = NULL;
+    if ((exitCode = draw_savebox(nc, &box, 
+                    "Enter save path (relative to home dir):"))) {
         return exitCode;
     }
 
-    if ((exitCode = get_save_path(nc, &savePath))) {
+    if ((exitCode = get_save_path(nc, box, &savePath))) {
+        ncplane_destroy(box);
         return exitCode;
     }
     char* key = get_courseKey(cursor);
-    int lecNum = get_currLec(cursor);
+    int lecNum = get_currLec(cursor) + 1;
     char* lecDir = build_dir(root, key, lecNum);
     
     if (!is_lec_downloaded(lecDir)) {
@@ -187,19 +190,21 @@ int save_lecture(struct notcurses* nc, Cursor* cursor, const char* root)
         }
     }
 
-    draw_savebox(nc, &box, "Saving lecture...");
-    char* resultMsg;
-    if ((exitCode = copy_lecture(lecDir, savePath))) {
-        int len = snprintf(NULL, 0, "Could not save to %s", savePath);
-        resultMsg = malloc(++len * sizeof(char));
-        snprintf(resultMsg, len, "Could not save to %s", savePath);
-    } else {
-        int len = snprintf(NULL, 0, "Could not save to %s", savePath);
-        resultMsg = malloc(++len * sizeof(char));
-        snprintf(resultMsg, len, "Could not save to %s", savePath);
-    }
-    draw_savebox_wait(nc, &box, resultMsg);
+    char* code = get_code(cursor);
+    int len = snprintf(NULL, 0, "%s_LEC%d", code, lecNum);
+    char* saveName = malloc(++len * sizeof(char));
+    snprintf(saveName, len, "%s_LEC%d", code, lecNum);
 
-    cleanup_saving((char*[]) {lecDir, savePath, resultMsg, NULL}, box);
+    if ((exitCode = stitch_lecture(lecDir, savePath, saveName))) {
+        draw_savebox(nc, &box, "Could not save lecture to:");
+    } else {
+        draw_savebox(nc, &box, "Saved lecture to:");
+    }
+    fprintf(stderr, "%s\n", savePath);
+    ncplane_putstr_yx(box, 2, 2, savePath);
+    notcurses_render(nc);
+    block_for_input(nc);
+
+    cleanup_saving((char*[]) {lecDir, savePath, NULL}, box);
     return exitCode;
 }

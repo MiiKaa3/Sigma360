@@ -19,6 +19,7 @@
 
 #include "utilities.h"
 #include "const.h"
+#include "fetch.h"
 
 /**
  * Dynamically reads a file into a heap allocated char* buffer. Note that the
@@ -80,7 +81,7 @@ int build_tree(char** root)
     cJSON* list = json->child;
     while (list) {
         cJSON* code = cJSON_GetObjectItem(list, "url");
-        char* dir = buildArgs(tmp, code->valuestring);
+        char* dir = build_args(tmp, code->valuestring);
         mkdir(dir, 0777);
         
         dir = realloc(dir, (strlen(dir)+strlen("/%s")+1)*sizeof(char));
@@ -88,8 +89,8 @@ int build_tree(char** root)
         cJSON* lessons = cJSON_GetObjectItem(list, "lessonCount");
         
         for (int i = 1; i <= lessons->valueint; i++) {
-            char* lecture = buildLec(i);
-            char* subdir = buildArgs(dir, lecture);
+            char* lecture = build_lec(i);
+            char* subdir = build_args(dir, lecture);
             mkdir(subdir, 0777);
             free(lecture);
             free(subdir);
@@ -111,7 +112,7 @@ int build_tree(char** root)
  * @param var    String to be appended to option.
  * @returns A new heap allocated string equalling "<option><var>"
  */
-char* buildArgs(char* option, char* var) 
+char* build_args(char* option, char* var) 
 {
     int len = snprintf(NULL, 0, option, var);
     char* str = malloc(++len * sizeof(char));
@@ -125,7 +126,7 @@ char* buildArgs(char* option, char* var)
  * @param num Lecture number to append to "Lecture"
  * @returns A heap allocated string equalling "Lecture<num>"
  */
-char* buildLec(int num)
+char* build_lec(int num)
 {
     int len = snprintf(NULL, 0, "Lecture%d", num);
     char* str = malloc(++len * sizeof(char));
@@ -191,13 +192,13 @@ int compare_course(const void* a, const void* b)
     const cJSON* course_b = *(const cJSON**) b;
 
     const cJSON* yearSem_a 
-        = cJSON_GetObjectItemCaseSensitive(item_a, "yearSem");
+        = cJSON_GetObjectItemCaseSensitive(course_a, "yearSem");
     const cJSON* yearSem_b 
-        = cJSON_GetObjectItemCaseSensitive(item_b, "yearSem");
+        = cJSON_GetObjectItemCaseSensitive(course_b, "yearSem");
 
-    const char* yearSemStr_a = cJSON_IsString(yearsem_a) ? 
+    const char* yearSemStr_a = cJSON_IsString(yearSem_a) ? 
         yearSem_a->valuestring : "";
-    const char* yearSemStr_b = cJSON_IsString(yearsem_b) ? 
+    const char* yearSemStr_b = cJSON_IsString(yearSem_b) ? 
         yearSem_b->valuestring : "";
 
     int comp = strcmp(yearSemStr_a, yearSemStr_b);
@@ -207,9 +208,9 @@ int compare_course(const void* a, const void* b)
 
     // Same year + sem => sort by strcmp() on courseCode 
     const cJSON* courseCode_a 
-        = cJSON_GetObjectItemCaseSensitive(item_a, "courseCode");
+        = cJSON_GetObjectItemCaseSensitive(course_a, "courseCode");
     const cJSON* courseCode_b 
-        = cJSON_GetObjectItemCaseSensitive(item_b, "courseCode");
+        = cJSON_GetObjectItemCaseSensitive(course_b, "courseCode");
 
     const char* courseCodeStr_a = cJSON_IsString(courseCode_a) ? 
         courseCode_a->valuestring : "";
@@ -271,7 +272,7 @@ int is_lec_downloaded(char* dir)
     // readdir goes through each file in a directory until NULL at the end
     while ((d = readdir(folder)) != NULL) {
         if (!strcmp(d->d_name, "v1.mp4") || !strcmp(d->d_name, "v2.mp4")
-                && strcmp(d->d_name,"audio.mp4")) {
+                || !strcmp(d->d_name,"audio.mp4")) {
             n++;
         }
     }
@@ -305,16 +306,16 @@ char* build_dir(char* root, char* url, int lecNum)
 {
     char* dir = strdup(root);
     expand_path(&dir);
-    char* course = buildArgs(dir, url);
-    free(dir)
+    char* course = build_args(dir, url);
+    free(dir);
     expand_path(&course);
-    char* lecName = buildLec(lecNum);
-    char* lecture = buildArgs(course, lecName);
+    char* lecName = build_lec(lecNum);
+    char* lecture = build_args(course, lecName);
     free(course);
     return lecture;
 }
 
-int build_popup(struct notcurses* nc, struct notcurses** box, 
+int build_popup(struct notcurses* nc, struct ncplane** box, 
         int rows, int cols)
 {
     struct ncplane* stdplane = notcurses_stdplane(nc);
@@ -322,7 +323,7 @@ int build_popup(struct notcurses* nc, struct notcurses** box,
     unsigned planeCols;
     ncplane_dim_yx(stdplane, &planeRows, &planeCols);
 
-    if (planeRows < rows || planeCols < cols) {
+    if ((int) planeRows < rows || (int) planeCols < cols) {
         return BAD_SIZE; // Box cannot fit in window
     }
 
@@ -340,6 +341,20 @@ int build_popup(struct notcurses* nc, struct notcurses** box,
         return BAD;
     }
 
+    nccell base = NCCELL_TRIVIAL_INITIALIZER;
+    nccell_load_char(*box, &base, ' ');   /* a real space, not an empty glyph */
+    nccell_set_bg_default(&base);
+    ncplane_set_base_cell(*box, &base);
+    nccell_release(*box, &base);
+    
+    uint64_t ch = 0;
+    ncchannels_set_bg_default(&ch);
+    ncchannels_set_fg_rgb(&ch, COL_BORDER_ACTIVE);
+    ncplane_perimeter_rounded(*box, 0, ch, 0);
+
+    ncplane_set_fg_rgb(*box, COL_HELP_DESC);
+    ncplane_set_bg_default(*box);
+    ncplane_putstr_yx(*box, 1, 2, "Downloading...");
     return GOOD;
 }
 
@@ -358,10 +373,42 @@ int build_reader(struct ncplane* box, struct ncreader** reader,
     // and show cursor within pane
     // >>>OPTION TO PLAY WITH<<<
     readerOpts.flags = NCREADER_OPTION_CURSOR | NCREADER_OPTION_HORSCROLL;
-    *reader = ncreader_create(readPlane, *readerOpts);
+    *reader = ncreader_create(readPlane, &readerOpts);
     if (!*reader) {
         ncplane_destroy(readPlane);
         return BAD;
     }
+    return GOOD;
+}
+
+int read_popup_input(struct notcurses* nc, struct ncreader* reader,
+    char** result)
+{
+    bool unwanted = false;
+    struct ncinput input;
+    while (1) {
+        notcurses_render(nc);
+
+        uint32_t id = notcurses_get_blocking(nc, &input);
+        if (id == (uint32_t) - 1) {
+            break;
+        }
+        if (input.evtype == NCTYPE_RELEASE) {
+            continue;
+        }
+        if (id == NCKEY_ESC) {
+            unwanted = true;
+            break;
+        }
+        if (id == NCKEY_ENTER) {
+            break;
+        }
+        ncreader_offer_input(reader, &input);
+    }
+    if (unwanted) {
+        ncreader_destroy(reader, NULL);
+        return -1;
+    }
+    ncreader_destroy(reader, result);
     return GOOD;
 }

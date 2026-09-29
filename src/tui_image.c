@@ -4,7 +4,6 @@
  * @brief Handles image rendering for sigma360. Image data is stored in the
  * pane's userptr attribute.
  */
-#include "tui_image.h"
 #include <stdio.h>
 #include <string.h>
 
@@ -21,11 +20,21 @@
 void preview_image_clear(Pane* preview)
 {
     imageData* data = ncplane_userptr(preview->content);
-    if (preview->content) {
-        ncplane_destroy(preview->content);
+    if (data == NULL) {
+        return;
     }
-    free(data->image);
-    ncvisual_destroy(data->ncimage);
+    if (data->imagePlane) {
+        ncplane_destroy(data->imagePlane);
+        data->imagePlane = NULL;
+    }
+    if (data->image) {
+        free(data->image);
+        data->image = NULL;
+    }
+    if (data->ncimage) {
+        ncvisual_destroy(data->ncimage);
+        data->ncimage = NULL;
+    }
 }
 
 /**
@@ -45,9 +54,9 @@ int preview_image_show(Pane* preview, const char* path)
 {
     unsigned rows;
     unsigned cols;
-    ncplane_dim_yx(plane, &rows, &cols);
+    ncplane_dim_yx(preview->content, &rows, &cols);
     if (rows < MIN_ROWS || cols < MIN_COLS) { /* too small to hold anything */
-        sigma360_tui_image_clear();
+        preview_image_clear(preview);
         return BAD_SIZE;
     }
     // Inset so image is within pane borders.
@@ -58,11 +67,13 @@ int preview_image_show(Pane* preview, const char* path)
     // Initialise the imageData tag along struct
     if (!data) {
         data = malloc(sizeof(imageData));
-        data->image = strdup(defaultImage);
+        data->image = NULL;
+        data->ncimage = NULL; 
+        data->imagePlane = NULL;
         ncplane_set_userptr(preview->content, data);
     }
     // Catch if image is already displayed in pane
-    if (strcmp(path, data->image) == 0) {
+    if (data->image && strcmp(path, data->image) == 0) {
         return GOOD;
     }
     // Else we want to display the image
@@ -98,7 +109,7 @@ int preview_image_show(Pane* preview, const char* path)
         .x = NCALIGN_CENTER,
         .y = NCALIGN_CENTER
     };
-    if (!ncvisual_blit(ncplane_notcurses(plane->content), 
+    if (!ncvisual_blit(ncplane_notcurses(preview->content), 
                 ncimage, &visualOpts)) {
         ncvisual_destroy(ncimage);
         ncplane_destroy(imageDisplay);
@@ -106,6 +117,7 @@ int preview_image_show(Pane* preview, const char* path)
     }
     data->ncimage = ncimage;
     data->image = strdup(path);
+    data->imagePlane = imageDisplay;
     return GOOD;
 }
 
@@ -117,9 +129,9 @@ int preview_image_show(Pane* preview, const char* path)
  */
 void cleanup_image(Pane* preview)
 {
-    imageData* data = ncplane_get_userptr(preview->content);
+    imageData* data = ncplane_userptr(preview->content);
     if (data) {
-        preview_clear_image(preview);
+        preview_image_clear(preview);
         free(data);
     }
 }

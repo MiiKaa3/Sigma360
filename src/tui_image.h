@@ -13,6 +13,7 @@ typedef struct {
     char* image;
     /// The notcurses interpretation of the image, for blitting purposes
     struct ncvisual* ncimage;
+    struct ncplane* imagePlane;
 } imageData;
 
 int preview_image_show(Pane* preview, const char* path);

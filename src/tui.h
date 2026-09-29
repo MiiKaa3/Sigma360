@@ -16,13 +16,13 @@ typedef struct {
  */
 typedef struct {
     /// The left most pane
-    pane parent;
+    Pane parent;
     /// The middle pane, where the cursor is active
-    pane current;
+    Pane current;
     /// The right most pane
-    pane preview;
+    Pane preview;
     /// The keybind help pane on bottom screen
-    pane help;
+    Pane help;
 } Screen;
 
 /*
@@ -51,14 +51,6 @@ typedef enum {
     ROLE_HELP
 } panerole;
 
-int sigma360_tui(void);
-
-static int watch_lec(char* dir, bool split, char* time);
-
-void dispatch_watch(Cursor* cursor, char* root, bool ss, char* time);
-
-int get_timestamp(struct notcurses* nc, char** timestamp);
-
-void build_download_box(struct notcurses* nc, struct ncplane** box);
+int tui(void);
 
 #endif // TUI_H

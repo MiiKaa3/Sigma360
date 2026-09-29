@@ -12,6 +12,8 @@
 #include "navigation.h"
 #include "const.h"
 
+static int get_course_data(CourseData* data, cJSON* course);
+
 /**
  * Initialises the cursor struct used in tui.c to maintain user's highlighted
  * courses and lectures. Initialisation involves generating course-lecture
@@ -219,7 +221,16 @@ int* get_topLecture(Cursor* cursor)
     return &(course->topLecture);
 }
 
-/*  CLEANUP             */
+/**
+ * Gets the course code for the current course. 
+ * @param cursor A pointer to the program's cursor instance.
+ * @returns The current course's code.
+ */
+char* get_code(Cursor* cursor)
+{
+    Course* course = get_course(cursor);
+    return course->data->courseCode;
+}
 
 /**
  * Memory cleanup routine for the cursor. The Courses array, each Lecture array,

@@ -27,6 +27,7 @@ add_executable(sigma360
     src/tui_image.c
     src/const.c
     src/fetch.c
+    src/saving_tmp.c
 )
 
 target_include_directories(sigma360 PRIVATE src)
@@ -34,11 +35,13 @@ target_link_libraries(sigma360 PRIVATE PkgConfig::NOTCURSES cjson)
 
 target_compile_options(sigma360 PRIVATE
     $<$<C_COMPILER_ID:GNU,Clang>:-Wall -Wextra -Wpedantic>
-    $<$<CONFIG:Debug>:-fsanitize=address -fno-omit-frame-pointer>
+    # $<$<CONFIG:Debug>:-fsanitize=address -g -fno-omit-frame-pointer>
+    $<$<CONFIG:Debug>:-g -fno-omit-frame-pointer>
 )
 
 target_link_options(sigma360 PRIVATE
-    $<$<CONFIG:Debug>:-fsanitize=address>
+    # $<$<CONFIG:Debug>:-fsanitize=address -g>
+    $<$<CONFIG:Debug>:-g>
 )
 
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}")

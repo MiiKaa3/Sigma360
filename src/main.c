@@ -21,10 +21,11 @@ int main(int argc, char **argv)
         } else if (strcmp(argv[1], "--help") == 0) {
             usage_msg();
         } else {
-            fprintf(stder, MAIN_USAGE);
+            fprintf(stderr, mainUsage);
             return BAD_USAGE;
+        }
     } else {
-        exitCode = sigma360_tui();
+        exitCode = tui();
     }
     return exitCode;
 }
@@ -34,7 +35,7 @@ int main(int argc, char **argv)
  */
 void version_msg()
 {
-    printf(mainUsage);
+    printf(version);
 }
 
 /**

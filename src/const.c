@@ -32,7 +32,7 @@ const char* const badTimestamp =
     "Timestamp given exceeds lecture duration.\n";
 
 const char* const mainUsage =
-    "Usage: sigma360 [--version | --help]\n"
+    "Usage: sigma360 [--version | --help]\n";
 
 /*  HELP MESSAGES           */
 

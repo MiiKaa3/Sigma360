@@ -17,6 +17,10 @@
 #define DEEPEST_LEVEL     1   // Defines the deepest level the cursor can take
 #define SAVE_BOX_H        5
 #define SAVE_BOX_W        60
+#define TIME_BOX_H        5
+#define TIME_BOX_W        50
+#define DWNLD_BOX_H       3
+#define DWNLD_BOX_W       40
 
 #define COL_TEXT_DEF      0xf0f0f0
 #define COL_BORDER_DIM    0x6272a4u
@@ -61,6 +65,7 @@ extern const char* const girlScout;
 #define BAD_SIZE        17
 #define BAD_IMAGE       18
 #define BAD_SAVE        19
+#define BAD_FRAME       20
 
 /*  ERROR MESSAGES      */
 

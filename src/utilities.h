@@ -14,7 +14,7 @@ int read_file(char* dir, char** file);
 
 int build_tree(char** root);
 
-char* buildArgs(char* option, char* var);
+char* build_args(char* option, char* var);
 
 void sort_cjson_array(cJSON *array);
 
@@ -22,16 +22,19 @@ int is_lec_downloaded(char* dir);
 
 void expand_path(char** path);
 
-char* buildLec(int num);
+char* build_lec(int num);
 
 char* build_dir(char* root, char* url, int lectureNum);
 
 int read_courses_json(char* filename, cJSON** json);
 
-int build_popup(struct notcurses* nc, struct notcurses** box, 
-        int rows, int cols)
+int build_popup(struct notcurses* nc, struct ncplane** box, 
+        int rows, int cols);
 
 int build_reader(struct ncplane* box, struct ncreader** reader,
         struct ncplane_options options);
+
+int read_popup_input(struct notcurses* nc, struct ncreader* reader,
+    char** result);
 
 #endif // UTILITIES_H

@@ -4,7 +4,7 @@
 #include "tui_image.h"
 #include "const.h"
 #include "fetch.h"
-/* #include "saving.h" */
+#include "saving_tmp.h"
 
 #include <notcurses/nckeys.h>
 #include <notcurses/notcurses.h>
@@ -55,7 +55,7 @@ static void destroy_screen(Screen* screen)
 {
     destroy_pane(&screen->parent);
     destroy_pane(&screen->current);
-    imageData* data = ncplane_userptr(&screen->preview);
+    imageData* data = ncplane_userptr(screen->preview.content);
     if (data) {
         cleanup_image(&screen->preview);
     }
@@ -126,6 +126,7 @@ static int make_pane(struct ncplane* std, Pane* pane,
  */
 static int layout_panes(struct notcurses* nc, Screen* screen) 
 {
+    int exitCode = GOOD;
     struct ncplane* std = notcurses_stdplane(nc);
     unsigned rows;
     unsigned cols;
@@ -142,7 +143,7 @@ static int layout_panes(struct notcurses* nc, Screen* screen)
     unsigned currentW = (remaining * 2) / 5;
     unsigned previewW = remaining - currentW;
 
-    if ((exitCode = make_pane(std, &screen->parent, (struct ncplane_plane)
+    if ((exitCode = make_pane(std, &screen->parent, (struct ncplane_options)
                 {.y=0, .x=0, .rows=bodyH, .cols=parentW}, 
                 ROLE_PARENT))) { // Build parent contents
         destroy_screen(screen);
@@ -240,7 +241,7 @@ static void draw_logo(struct ncplane* p)
  * @param dims   The dimensions of the plane to draw to.
  */
 static void draw_courses(struct ncplane* p, Cursor* cursor, 
-        panerole_t role, unsigned* dims)
+        panerole role, unsigned* dims)
 {
     // Might need to cook something in to tell the user no courses available
     int w = (int) dims[1] - 1 >= 1 ? (int) dims[1] - 1 : 1;
@@ -276,7 +277,7 @@ static void draw_courses(struct ncplane* p, Cursor* cursor,
  * @param dims   The dimensions of the plane to draw to.
  */
 static void draw_lectures(struct ncplane* p, Course* course, 
-        panerole_t role, unsigned* dims)
+        panerole role, unsigned* dims)
 {
     int w = (int) dims[1] - 1 >= 1 ? (int) dims[1] - 1 : 1;
     for (int i = course->topLecture; i < course->data->lecCount
@@ -304,7 +305,7 @@ static void draw_lectures(struct ncplane* p, Course* course,
  * @param cursor A pointer to the program's cursor instance.
  * @param role   The role of the plane, be it parent, current, or preview.
  */
-static void draw_pane(struct ncplane* p, Cursor* cursor, panerole_t role)
+static void draw_pane(struct ncplane* p, Cursor* cursor, panerole role)
 {
     if (!p || !cursor) { // Might need to check for no lectures or courses?
         return;
@@ -356,10 +357,10 @@ static void draw_help(const Pane* help)
         { "k/up",    "up"    },
         { "l/right", "into"  },
         { "shift+[watch]", "split screen"},
-    }
+    };
  
     int x = 1;
-    for (size_t i = 0; i < sizeof binds / sizeof *binds; i++) {
+    for (size_t i = 0; i < sizeof(binds) / sizeof(*binds); i++) {
         int w;
  
         ncplane_set_fg_rgb(p, COL_HELP_KEY);
@@ -399,7 +400,12 @@ static void draw_all(Screen* screen, Cursor* cursor)
 // Main                                        //
 // ------------------------------------------- //
 
-int sigma360_tui(void) {
+static void build_download_box(struct notcurses* nc, struct ncplane** box);
+static int watch_lec(char* dir, bool split, char* time);
+static void dispatch_watch(Cursor* cursor, char* root, bool ss, char* time);
+static int get_timestamp(struct notcurses* nc, char** timestamp);
+
+int tui() {
 
     int exitCode = GOOD;
 
@@ -420,7 +426,7 @@ int sigma360_tui(void) {
         return exitCode;
     }
 
-    pid_t thumbGetter = fork();
+    pid_t thumbGetter;
     get_thumbnails(root, &thumbGetter);
 
     Cursor cursor;
@@ -471,14 +477,15 @@ int sigma360_tui(void) {
         // Want to implement a "Are you sure you want to quit" box
         //
         if (id == 'q' || id == NCKEY_ESC) {
-            if (!fork()) {
-                execlp("rm", "rm", "-rf", root, NULL);
-                execlp("rm", "rm", coursesJSON, NULL);
+            kill(thumbGetter, SIGKILL);
+            waitpid(thumbGetter, NULL, 0);
+
+            pid_t quitter = fork();
+            if (!quitter) {
+                execlp("rm", "rm", "-rf", root, coursesJSON, NULL);
                 _exit(BAD);
             }
-            
-            wait(NULL);
-            waitpid(thumbGetter, NULL, 0);
+            waitpid(quitter, NULL, 0);
             break; // quiting out
         }
 
@@ -523,6 +530,7 @@ int sigma360_tui(void) {
                 // Check if there's anything in it.
                 if (!is_lec_downloaded(dir)) {
                     struct ncplane* box = NULL;
+                    preview_image_clear(&screen.preview);
                     build_download_box(nc, &box);
                     watch_lec(dir, false, "00;00;00");
                     if (box) { 
@@ -534,23 +542,37 @@ int sigma360_tui(void) {
                 free(dir);
             }
         } else if (id == 's' && cursor.level > 0) { // Only save lectures
-            /* preview_image_clear(); */
-            /* sigma360_tui_save(nc, &cursor, root); */
+            if (cursor.level > 0 && get_lecCount(&cursor) > 0) {
+                preview_image_clear(&screen.preview);
+                save_lecture(nc, &cursor, root);
+            }
         } else if (id == NCKEY_ENTER && ni.shift) {
             dispatch_watch(&cursor, root, true, "00;00;00");
         } else if (id == 't') {
-            char* timestamp;
-            if (!get_timestamp(nc, &timestamp)) {
-                dispatch_watch(&cursor, root, false, timestamp);
-            } else {
-                // exit silently if escaped from
+            if (cursor.level > 0 && get_lecCount(&cursor) > 0) {
+                char* timestamp = NULL;
+                preview_image_clear(&screen.preview);
+                if (!get_timestamp(nc, &timestamp)) {
+                    dispatch_watch(&cursor, root, false, timestamp);
+                } else {
+                    // exit silently if escaped from
+                }
+                if (timestamp) {
+                    free(timestamp);
+                }
             }
         } else if (id == 'T') {
-            char* timestamp;
-            if (!get_timestamp(nc, &timestamp)) {
-                dispatch_watch(&cursor, root, true, timestamp);
-            } else {
-                // exit silently if escaped from
+            if (cursor.level > 0 && get_lecCount(&cursor) > 0) {
+                char* timestamp;
+                preview_image_clear(&screen.preview);
+                if (!get_timestamp(nc, &timestamp)) {
+                    dispatch_watch(&cursor, root, true, timestamp);
+                } else {
+                    // exit silently if escaped from
+                }
+                if (timestamp) {
+                    free(timestamp);
+                }
             }
         } else {
             continue; // some unbound key; no redraw required
@@ -561,14 +583,16 @@ int sigma360_tui(void) {
             char* dir = build_dir(root, 
                     get_courseKey(&cursor), (int) get_currLec(&cursor) + 1);
             expand_path(&dir);
-            char* thumbnail = buildArgs(dir, "t.jpg");
+            char* thumbnail = build_args(dir, "t.jpg");
             free(dir);
-            if (access(temp, F_OK) == 0) { // man access
+            if (access(thumbnail, F_OK) == 0) { // man access
                 preview_image_show(&screen.preview, thumbnail);
             } else {
                 preview_image_show(&screen.preview, defaultImage);
             }
             free(thumbnail);
+        } else {
+            preview_image_clear(&screen.preview);
         }
         draw_all(&screen, &cursor);
         notcurses_render(nc);
@@ -577,11 +601,11 @@ int sigma360_tui(void) {
     destroy_screen(&screen);
     notcurses_stop(nc);
     cJSON_Delete(json);
-    destruct_cursor(cursor);
+    destruct_cursor(&cursor);
     return GOOD;
 }
 
-void dispatch_watch(Cursor* cursor, char* root, bool ss, char* time)
+static void dispatch_watch(Cursor* cursor, char* root, bool ss, char* time)
 {
     if (cursor->level > 0 && get_lecCount(cursor) > 0) {
         char* dir = build_dir(root, 
@@ -591,7 +615,7 @@ void dispatch_watch(Cursor* cursor, char* root, bool ss, char* time)
     }
 }
 
-int watch_lec(char* dir, bool split, char* time)
+static int watch_lec(char* dir, bool split, char* time)
 {
     pid_t pid = fork();
 
@@ -614,102 +638,38 @@ int watch_lec(char* dir, bool split, char* time)
 //  Timestamp grabbing                         //
 // ------------------------------------------- //
 
-struct ncplane* build_popup(struct notcurses* nc, int rows, int cols)
-{
-    struct ncplane* stdplane = notcurses_stdplane(nc);
-    unsigned planeRows;
-    unsigned planeCols;
-    ncplane_dim_yx(stdplane, &planeRows, &planeCols);
-
-    int x = ((int) planeCols - cols) / 2;
-    int y = ((int) planeRows - rows) / 2;
-
-    struct ncplane_options nopts = {
-        .x = x,
-        .y = y,
-        .rows = (unsigned)rows,
-        .cols = (unsigned)cols,
-    };
-    struct ncplane* popup = ncplane_create(stdplane, &nopts);
-
-    ncplane_set_bg_rgb8(popup, 0, 0, 0);
-    ncplane_set_fg_rgb8(popup, 255, 255, 255);
-
-    return popup;
-}
-
-int get_timestamp(struct notcurses* nc, char** timestamp)
+static int get_timestamp(struct notcurses* nc, char** timestamp)
 {
     // rows = 5, cols = 50. Adjustable to desired window size
-    struct ncplane* popup = build_popup(nc, 5, 50);
-    
-    int size = 1;
-    *timestamp = malloc(sizeof(char));
-    (*timestamp)[size - 1] = '\0';
-
-    while(true) {
-        // Render pane
-        ncplane_erase(popup);
-        ncplane_perimeter_rounded(popup, 0, 0, 0); // border
-        ncplane_putstr_yx(popup, 1, 2, 
-                "Enter a start time for the lecture (HH;MM;SS): ");
-        ncplane_putstr_yx(popup, 3, 2, *timestamp);
-        preview_image_clear();
-        notcurses_render(nc);
-
-        struct ncinput ni;
-        uint32_t key = notcurses_get_blocking(nc, &ni);
-
-        if (ni.evtype == NCTYPE_RELEASE || ni.evtype == NCTYPE_REPEAT) {
-            continue;
-        }
-
-        if (key == NCKEY_ENTER) {
-            /* *timestamp = realloc(*timestamp, ++size * sizeof(char)); */
-            /* (*timestamp)[size - 1] = '\0'; */
-            break;
-        } else if (key == NCKEY_ESC || key == 'q') {
-            free(*timestamp);
-            ncplane_destroy(popup);
-            return -1;
-        } else if (key == NCKEY_BACKSPACE) {
-            if (size > 1) {
-                (*timestamp)[--size - 1] = '\0';
-            } 
-        } else if ((key >= '0' && key <= '9') || key == ';') {
-            *timestamp = realloc(*timestamp, ++size * sizeof(char));
-            (*timestamp)[size - 2] = key;
-            (*timestamp)[size - 1] = '\0';
-        }
+    int exitCode = GOOD;
+    struct ncplane* box;
+    if ((exitCode = build_popup(nc, &box, TIME_BOX_H, TIME_BOX_W))) {
+        return exitCode;
     }
 
-    ncplane_destroy(popup);
-    return GOOD;
+    ncplane_putstr_yx(box, 1, 2, 
+            "Enter a start time for the lecture (HH;MM;SS): ");
+    
+    struct ncreader* reader;
+    struct ncplane_options options = {
+        .x = 2,
+        .y = 2,
+        .rows = 1,
+        .cols = TIME_BOX_W - 4
+    };
+    if ((exitCode = build_reader(box, &reader, options))) {
+        ncplane_destroy(box);
+        return exitCode;
+    }
+    exitCode = read_popup_input(nc, reader, timestamp);
+    ncplane_destroy(box);
+    notcurses_render(nc);
+    return exitCode;
 }
 
 void build_download_box(struct notcurses* nc, struct ncplane** box)
 {
-    struct ncplane *std = notcurses_stdplane(nc);
-    unsigned r, c;
-    ncplane_dim_yx(std, &r, &c);
-    unsigned bw = (c > 40) ? 40 : c;
-    struct ncplane_options bo = {
-        .y = (int) (r - 3) / 2,
-        .x = (int) (c - bw) / 2, 
-        .rows = 3,
-        .cols = bw,
-    };
-    *box = ncplane_create(std, &bo);
-    if (box) {
-        uint64_t ch = 0;
-        ncchannels_set_fg_rgb(&ch, COL_SEL_FG);
-        ncchannels_set_bg_rgb(&ch, 0x000000);
-        ncchannels_set_fg_rgb(&ch, COL_BORDER_ACTIVE);
-        ncplane_perimeter_rounded(*box, 0, ch, 0);
-        ncplane_set_fg_rgb(*box, COL_HELP_DESC);
-        ncplane_set_bg_rgb(*box, 0x000000);
-        ncplane_putstr_yx(*box, 1, 2, "downloading...");
-        preview_image_clear();
-        notcurses_render(nc);
-    }
+    build_popup(nc, box, DWNLD_BOX_H, DWNLD_BOX_W);
+    ncplane_putstr_yx(*box, 1, 2, "Downloading...");
+    notcurses_render(nc);
 }

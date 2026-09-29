@@ -69,8 +69,6 @@ typedef struct {
 
 /* FUNCTION DEFINITIONS     */
 
-int get_course_data(CourseData* data, cJSON* course);
-
 int init_cursor(Cursor* cursor, cJSON* json);
 
 bool move_cursor_x(Cursor* cursor, int dx);
@@ -90,5 +88,7 @@ int get_currLec(Cursor* cursor);
 int* get_topCourse(Cursor* cursor);
 
 int* get_topLecture(Cursor* cursor);
+
+char* get_code(Cursor* cursor);
 
 #endif // NAVIGATION_H
