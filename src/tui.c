@@ -534,7 +534,7 @@ int tui()
             move_cursor_y(&cursor, 1);
         } else if (id == 'h' || id == NCKEY_LEFT) {
             move_cursor_y(&cursor, -1);
-        } else if (id == NCKEY_ENTER && !ni.shift) {
+        } else if (id == NCKEY_ENTER) {
             if (cursor.level > 0 && get_lecCount(&cursor) > 0) {
                 // Grab the lecture's /tmp directory name
                 // Check if there's anything in it.
@@ -542,12 +542,12 @@ int tui()
                     struct ncplane* box = NULL;
                     preview_image_clear(&screen.preview);
                     build_download_box(nc, &box);
-                    watch_lec(dir, false, "00;00;00");
+                    watch_lec(dir, ni.shift ? true : false, "00;00;00");
                     if (box) { 
                         ncplane_destroy(box);
                     }
                 } else {
-                    watch_lec(dir, false, "00;00;00");
+                    watch_lec(dir, ni.shift ? true : false, "00;00;00");
                 }
             }
         } else if (id == 's' && cursor.level > 0) { // Only save lectures
@@ -555,8 +555,6 @@ int tui()
                 preview_image_clear(&screen.preview);
                 save_lecture(nc, &cursor, root);
             }
-        } else if (id == NCKEY_ENTER && ni.shift) {
-            watch_lec(dir, true, "00;00;00");
         } else if (id == 't') {
             if (cursor.level > 0 && get_lecCount(&cursor) > 0) {
                 char* timestamp = NULL;
