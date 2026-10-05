@@ -85,7 +85,6 @@ static int draw_savebox(struct notcurses* nc, struct ncplane** box, char* msg)
         return exitCode;
     }
     ncplane_set_scrolling(*box, true);
-
     ncplane_putstr_yx(*box, 1, 2, msg);
     notcurses_render(nc);
     return exitCode;

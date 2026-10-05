@@ -56,7 +56,7 @@ extern const char* const girlScout;
 #define BAD_DIR         7
 #define BAD_CURSOR      8
 #define BAD_PANES       9
-#define BAD_CMD_EXEC    10
+/* #define     10 */
 #define BAD_COOKIES     12
 #define BAD_LEC_GET     13
 #define BAD_THUMB       14

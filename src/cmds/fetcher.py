@@ -110,7 +110,6 @@ class Fetcher():
                     except Exception as e:
                         print(f"Failed for {path}: {e}")
                     t.sleep(0.2)
-        
         return 0
 
     def load_session(self, cookie_file:str) -> requests.Session:

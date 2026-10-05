@@ -205,7 +205,7 @@ static void clamp_view(Cursor* cursor, int rows)
     }
 }
 
-/**
+./**
  * Draws the logo to the desired plane. 
  * @param p Plane to be drawn to.
  */
@@ -402,9 +402,13 @@ static void draw_all(Screen* screen, Cursor* cursor)
 
 static void build_download_box(struct notcurses* nc, struct ncplane** box);
 static int watch_lec(char* dir, bool split, char* time);
-static void dispatch_watch(Cursor* cursor, char* root, bool ss, char* time);
 static int get_timestamp(struct notcurses* nc, char** timestamp);
 
+/**
+ * Where the bread gets made. This function handles user inputs and run time
+ * displaying. Dispatches videos, saving, thumbnails, etc.
+ * @returns The exitCode of the program
+ */
 int tui() {
 
     int exitCode = GOOD;
@@ -550,29 +554,35 @@ int tui() {
             dispatch_watch(&cursor, root, true, "00;00;00");
         } else if (id == 't') {
             if (cursor.level > 0 && get_lecCount(&cursor) > 0) {
+                char* dir = build_dir(root, 
+                        get_courseKey(cursor), (int) get_currLec(cursor) + 1);
                 char* timestamp = NULL;
                 preview_image_clear(&screen.preview);
                 if (!get_timestamp(nc, &timestamp)) {
-                    dispatch_watch(&cursor, root, false, timestamp);
+                    watch_lec(dir, false, timestamp);
                 } else {
                     // exit silently if escaped from
                 }
                 if (timestamp) {
                     free(timestamp);
                 }
+                free(dir);
             }
         } else if (id == 'T') {
             if (cursor.level > 0 && get_lecCount(&cursor) > 0) {
+                char* dir = build_dir(root, 
+                        get_courseKey(cursor), (int) get_currLec(cursor) + 1);
                 char* timestamp;
                 preview_image_clear(&screen.preview);
                 if (!get_timestamp(nc, &timestamp)) {
-                    dispatch_watch(&cursor, root, true, timestamp);
+                    watch_lec(dir, true, timestamp);
                 } else {
                     // exit silently if escaped from
                 }
                 if (timestamp) {
                     free(timestamp);
                 }
+                free(dir);
             }
         } else {
             continue; // some unbound key; no redraw required
@@ -605,25 +615,27 @@ int tui() {
     return GOOD;
 }
 
-static void dispatch_watch(Cursor* cursor, char* root, bool ss, char* time)
-{
-    if (cursor->level > 0 && get_lecCount(cursor) > 0) {
-        char* dir = build_dir(root, 
-                get_courseKey(cursor), (int) get_currLec(cursor) + 1);
-        watch_lec(dir, ss, time);
-        free(dir);
-    }
-}
-
+/**
+ * Generates a child process to try and watch a lecture. Uses exec*() to 
+ * run ./src/cmds/watch, which takes arguements -l and a directory to try
+ * watch from, -t and a timestamp to start recording from, and -s to watch
+ * both recordings or just the main screen. Reaps child process.
+ * @param
+ * @param
+ * @param
+ * @returns
+ *      BAD     upon failure to exec ./src/cmds/watch.
+ *
+ */
 static int watch_lec(char* dir, bool split, char* time)
 {
     pid_t pid = fork();
 
-    if (pid == 0) {
+    if (!pid) {
         char* argv[]
             = { watch, "-l", dir, "-t", time, split ? "-s" : NULL, NULL };
         execv(argv[0], argv);
-        _exit(BAD_CMD_EXEC);
+        _exit(BAD);
     }
     // Parent
     int status;
