@@ -1,3 +1,8 @@
+/**
+ * @file fetch.h
+ * @author sammado103
+ * @brief Header file to fetch.c
+ */
 #ifndef FETCH_H
 #define FETCH_H
 

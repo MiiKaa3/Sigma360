@@ -4,7 +4,7 @@
 #include "tui_image.h"
 #include "const.h"
 #include "fetch.h"
-#include "saving_tmp.h"
+#include "saving.h"
 
 #include <notcurses/nckeys.h>
 #include <notcurses/notcurses.h>

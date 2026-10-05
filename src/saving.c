@@ -1,6 +1,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdbool.h>
+#include <unistd.h>
+#include <fcntl.h>
+#include <sys/wait.h>
 
 #include <notcurses/nckeys.h>
 #include <notcurses/notcurses.h>
@@ -8,354 +12,194 @@
 #include "navigation.h"
 #include "utilities.h"
 #include "const.h"
+#include "fetch.h"
 
-// Path of the lecture the current pane has highlighted, as
-// "<root>/<sectionId>/Lecture<n>". NULL when the pane is showing courses
-// rather than lectures, so there is nothing to save.
-static char *selected_lecture_dir(nav_t *nav, const char *root) {
-    if (root == NULL || nav->depth < 1) {
-        return NULL;
-    }
-    list_t *l = nav_current(nav);
-    if (l->count == 0) {
-        return NULL;
-    }
-    const char *section = nav->path[nav->depth]->url;
-    if (section == NULL) {
-        return NULL;
-    }
+#define ESCAPE     -1
 
-    int len = snprintf(NULL, 0, "%s/%s/Lecture%d", root, section, (int)l->sel + 1);
-    if (len < 0) {
-        return NULL;
-    }
-    char *dir = malloc((size_t)len + 1);
-    if (dir != NULL) {
-        snprintf(dir, (size_t)len + 1, "%s/%s/Lecture%d", root, section, (int)l->sel + 1);
-    }
-    return dir;
-}
-
-// The fetcher always writes audio.mp4 and v1.mp4 (v2.mp4 only exists for
-// dual-screen recordings), so both being present means the lecture is on disk.
-// Checking the files rather than is_dir_empty() keeps a downloaded thumbnail
-// from passing for a downloaded lecture.
-static bool lecture_downloaded(const char *dir) {
-    char path[PATH_MAX];
-
-    snprintf(path, sizeof path, "%s/v1.mp4", dir);
-    if (access(path, R_OK) != 0) {
-        return false;
-    }
-    snprintf(path, sizeof path, "%s/audio.mp4", dir);
-    return access(path, R_OK) == 0;
-}
-
-// Downloads the lecture into dir, the same way src/cmds/watch does.
-static int fetch_lecture(const char *dir) {
-    char *script;
-    if (findcwd(&script) != 0) {
-        return -1;
-    }
-    strcat(script, "/src/cmds/fetcher.py");
-
-    pid_t pid = fork();
-    if (pid < 0) {
-        free(script);
-        return -1;
-    }
-
-    if (pid == 0) {
-        // Child. The fetcher chatters on stdout/stderr, which would land on top
-        // of the TUI.
-        int devnull = open("/dev/null", O_RDWR);
-        if (devnull >= 0) {
-            dup2(devnull, STDOUT_FILENO);
-            dup2(devnull, STDERR_FILENO);
-            if (devnull > STDERR_FILENO) {
-                close(devnull);
-            }
-        }
-        execlp("python3", "python3", script, "--watch", dir, NULL);
-        _exit(127);
-    }
-
-    // Parent
-    free(script);
-    int status;
-    while (waitpid(pid, &status, 0) < 0) {
-        if (errno != EINTR) {
-            return -1;
-        }
-    }
-    if (WIFEXITED(status)) {
-        return WEXITSTATUS(status);
-    }
-    return -1;
-}
-
-// Copies the lecture's media to dest. The trailing "/." copies the contents of
-// the lecture directory, which works whether or not dest already exists.
-static int copy_lecture(const char *dir, const char *dest) {
-    char from[PATH_MAX];
-    if (snprintf(from, sizeof from, "%s/.", dir) >= (int)sizeof from) {
-        return -1;
-    }
-
-    pid_t pid = fork();
-    if (pid < 0) {
-        return -1;
-    }
-
-    if (pid == 0) {
-        // Child
-        int devnull = open("/dev/null", O_RDWR);
-        if (devnull >= 0) {
-            dup2(devnull, STDOUT_FILENO);
-            dup2(devnull, STDERR_FILENO);
-            if (devnull > STDERR_FILENO) {
-                close(devnull);
-            }
-        }
-        execlp("cp", "cp", "-r", from, dest, NULL);
-        _exit(127);
-    }
-
-    // Parent
-    int status;
-    while (waitpid(pid, &status, 0) < 0) {
-        if (errno != EINTR) {
-            return -1;
-        }
-    }
-    if (WIFEXITED(status)) {
-        return WEXITSTATUS(status);
-    }
-    return -1;
-}
-
-// Replaces the dialog's interior with a single line of text.
-static void modal_message(struct notcurses *nc, struct ncplane *box, const char *msg) {
-    unsigned rows = ncplane_dim_y(box);
-    unsigned cols = ncplane_dim_x(box);
-
-    ncplane_set_fg_rgb(box, COL_HELP_DESC);
-    ncplane_set_bg_rgb(box, COL_MODAL_BG);
-    for (unsigned y = 1; y + 1 < rows; y++) {
-        ncplane_printf_yx(box, (int)y, 1, "%*s", (int)cols - 2, "");
-    }
-    ncplane_printf_yx(box, 1, 2, "%.*s", (int)cols - 4, msg);
-
-    notcurses_render(nc);
-}
-
-// Same, but holds the dialog open until the user has read it.
-static void modal_wait(struct notcurses *nc, struct ncplane *box, const char *msg) {
-    // The precision leaves room for the suffix no matter how long msg is.
-    char line[512];
-    snprintf(line, sizeof line, "%.*s  (any key)", (int)(sizeof line - 12), msg);
-    modal_message(nc, box, line);
-
-    struct ncinput ni;
-    for (;;) {
-        uint32_t id = notcurses_get_blocking(nc, &ni);
-        if (id == (uint32_t)-1 || ni.evtype != NCTYPE_RELEASE) {
-            break;
-        }
-    }
-}
-
-// Downloads the highlighted lecture if it isn't already on disk, then copies it
-// to dest. Progress goes into the save dialog, which the caller still owns.
-static int save_lecture(struct notcurses *nc, struct ncplane *box, nav_t *nav,
-                        const char *root, const char *dest) {
-    char *dir = selected_lecture_dir(nav, root);
-    if (dir == NULL) {
-        modal_wait(nc, box, "no lecture highlighted");
-        return -1;
-    }
-
-    if (!lecture_downloaded(dir)) {
-        modal_message(nc, box, "downloading lecture...");
-        if (fetch_lecture(dir) != 0 || !lecture_downloaded(dir)) {
-            modal_wait(nc, box, "download failed");
-            free(dir);
-            return -1;
-        }
-    }
-
-    char msg[512];
-    snprintf(msg, sizeof msg, "saving to %s...", dest);
-    modal_message(nc, box, msg);
-
-    int rc = 0;
-    if (copy_lecture(dir, dest) != 0) {
-        snprintf(msg, sizeof msg, "could not save to %s", dest);
-        rc = -1;
-    } else {
-        snprintf(msg, sizeof msg, "saved to %s", dest);
-    }
-    modal_wait(nc, box, msg);
-
-    free(dir);
-    return rc;
-}
-
-static char *save_lecture_name(nav_t *nav);
-
-int save_lecture(struct notcurses* nc, Cursor* cursor, const char* root)
+/**
+ * Clean up function for the main saving function. Frees every char* in a null
+ * terminated list of char*'s and destroys the saving box.
+ * @param strs An null-terminated array of heap allocated strings.
+ * @param box  A pointer to the ncplane struct that represents the save box.
+ */
+static void cleanup_saving(char* strs[], struct ncplane* box)
 {
-    struct ncplane* std = notcurses_stdplane(nc);
-    unsigned rows;
-    unsigned cols;
-    ncplane_dim_yx(std, &rows, &cols);
-
-    unsigned boxH = SAVE_BOX_H;
-    unsigned boxW = (cols > SAVE_BOX_W) ? SAVE_BOX_W : cols;
-    if (rows < boxH || boxW < 20) {
-        return BAD_SIZE; // no room for the dialog
+    while (strs[0]) {
+        free(strs[0]);
+        strs++;
     }
+    ncplane_destroy(box);
+}
 
-    struct ncplane_options boxOpts = {
-        .y = (int) (rows - boxH) / 2,
-        .x = (int) (cols - boxW) / 2,
-        .rows = boxH,
-        .cols = boxW,
+/**
+ * 
+ */
+static int get_save_path(struct notcurses* nc, struct ncplane* box,
+        char** path)
+{
+    int exitCode = GOOD;
+
+    struct ncreader* reader;
+    struct ncplane_options options = {
+        .x = 2,
+        .y = 2,
+        .rows = 1,
+        .cols = SAVE_BOX_W - 4
     };
-    struct ncplane* box = ncplane_create(std, &boxOpts);
-    if (!box) {
-        return BAD_SIZE;
+    if ((exitCode = build_reader(box, &reader, options))) {
+        return exitCode; 
     }
 
-    // An opaque base cell, otherwise the panes underneath show through.
-    uint64_t base = 0;
-    ncchannels_set_fg_rgb(&base, COL_SEL_FG);
-    ncchannels_set_bg_rgb(&base, COL_MODAL_BG);
-    ncplane_set_base(box, " ", 0, base);
+    // Set up reader plane and reader
+    exitCode = read_popup_input(nc, reader, path);
+    return exitCode;
+}
 
-    uint64_t border = 0;
-    ncchannels_set_fg_rgb(&border, COL_BORDER_ACTIVE);
-    ncchannels_set_bg_rgb(&border, COL_MODAL_BG);
-    ncplane_perimeter_rounded(box, 0, border, 0);
+/* static int validate_msg(struct ncplane* box, char* msg, char** newMsg) */
+/* { */
+/*     // Note - 2 as we have a border. */
+/*     unsigned height = ncplane_dim_y(box) - 2; */
+/*     unsigned width = ncplane_dim_x(box) - 2; */
+/*     int size = 0; */
+/*     *newMsg = malloc(sizeof(char)); */
+/*     for (int i = 0; i < (int) strlen(msg) && i < (int) (height * width); i++) { */
+/*         if (i % (int) (width - 1) == 0) { */
+/*             *newMsg = realloc(*newMsg, ++size * sizeof(char)); */
+/*             (*newMsg)[size - 1] = '\n'; */
+/*         } */
+/*         *newMsg = realloc(*newMsg, ++size * sizeof(char)); */
+/*         (*newMsg)[size - 1] = msg[i]; */
+/*     } */
+/*     *newMsg = realloc(*newMsg, ++size * sizeof(char)); */
+/*     (*newMsg)[size - 1] = '\0'; */
+/*     return GOOD; */
+/* } */
 
-    ncplane_set_fg_rgb(box, COL_HELP_DESC);
-    ncplane_set_bg_rgb(box, COL_MODAL_BG);
-    ncplane_putstr_yx(box, 1, 2, "save as:  (enter to confirm, esc to cancel)");
-
-    struct ncplane_options ropts = {
-        .y = 2, 
-        .x = 2, 
-        .rows = 1, 
-        .cols = boxW - 4,
-    };
-    struct ncplane* rp = ncplane_create(box, &ropts);
-    if (rp == NULL) {
-        ncplane_destroy(box);
-        return -1;
+static int draw_savebox(struct notcurses* nc, struct ncplane** box, char* msg)
+{
+    int exitCode = GOOD;
+    if (*box != NULL) {
+        ncplane_destroy(*box);
     }
-
-    struct ncreader_options rdopts = {0};
-    ncchannels_set_fg_rgb(&rdopts.tchannels, COL_SEL_FG);
-    ncchannels_set_bg_rgb(&rdopts.tchannels, COL_MODAL_BG);
-    rdopts.flags = NCREADER_OPTION_CURSOR | NCREADER_OPTION_HORSCROLL;
-
-    // ncreader takes ownership of rp; ncreader_destroy frees it.
-    struct ncreader *rd = ncreader_create(rp, &rdopts);
-    if (rd == NULL) {
-        ncplane_destroy(rp);
-        ncplane_destroy(box);
-        return -1;
+    if ((exitCode = build_popup(nc, box, SAVE_BOX_H, SAVE_BOX_W))) {
+        return exitCode;
     }
+    ncplane_set_scrolling(*box, true);
 
-    bool accepted = false;
-    struct ncinput ni;
-    for (;;) {
-        notcurses_render(nc);
+    ncplane_putstr_yx(*box, 1, 2, msg);
+    notcurses_render(nc);
+    return exitCode;
+}
 
-        uint32_t id = notcurses_get_blocking(nc, &ni);
-        if (id == (uint32_t)-1) {
-            break;
-        }
-        if (ni.evtype == NCTYPE_RELEASE) {
-            continue;
-        }
-        if (id == NCKEY_ESC) {
-            break;
-        }
-        if (id == NCKEY_ENTER) {
-            accepted = true;
-            break;
-        }
-        ncreader_offer_input(rd, &ni);
+static int stitch_lecture(char* tmpDir, char* destination, char* saveName)
+{
+    const char* home = getenv("HOME");
+    int len = snprintf(NULL, 0, "%s/v1.mp4", tmpDir);
+    char* video1 = malloc(++len * sizeof(char));
+    snprintf(video1, len, "%s/v1.mp4", tmpDir);
+
+    len = snprintf(NULL, 0, "%s/v2.mp4", tmpDir);
+    char* video2 = malloc(++len * sizeof(char));
+    snprintf(video2, len, "%s/v2.mp4", tmpDir);
+
+    len = snprintf(NULL, 0, "%s/audio.mp4", tmpDir);
+    char* audio = malloc(++len * sizeof(char));
+    snprintf(audio, len, "%s/audio.mp4", tmpDir);
+
+    len = snprintf(NULL, 0, "%s/%s/%s_1.mp4", home, destination, saveName);
+    char* leftVid = malloc(++len * sizeof(char));
+    snprintf(leftVid, len, "%s/%s/%s_1.mp4", home, destination, saveName);
+
+    len = snprintf(NULL, 0, "%s/%s/%s_2.mp4", home, destination, saveName);
+    char* rightVid = malloc(++len * sizeof(char));
+    snprintf(rightVid, len, "%s/%s/%s_2.mp4", home, destination, saveName);
+
+    pid_t left = fork();
+    pid_t right = -1;
+    if (left) {
+        right = fork();
     }
-
-    char *name = NULL;
-    // ncreader_destroy frees rp; the dialog itself stays up to report progress.
-    ncreader_destroy(rd, accepted ? &name : NULL);
-    notcurses_cursor_disable(nc);
-
-    int rc = 1; // cancelled
-    if (accepted && name != NULL && name[0] != '\0') {
-        rc = save_lecture(nc, box, nav, root, name);
-        
-        char video[PATH_MAX], audio[PATH_MAX], out[PATH_MAX];
-
-        snprintf(video, sizeof video, "%s/v1.mp4", name);
-        snprintf(audio, sizeof audio, "%s/audio.mp4", name);
-        snprintf(out, sizeof out, "%s/%s.mp4", name, save_lecture_name(nav));
-
-        char *args[] = {
+    if (left < 0 || (right < 0 && left)) {
+        return BAD;
+    }
+    if (!left || !right) {
+        int fd = open("/dev/null", O_RDWR);
+        dup2(fd, STDOUT_FILENO);
+        dup2(fd, STDERR_FILENO);
+        close(fd);
+        char* args[] = {
             "ffmpeg", "-nostdin", "-y",
-            "-i", video,
+            "-i", (left == 0) ? video1 : video2,
             "-i", audio,
             "-map", "0:v:0",
             "-map", "1:a:0",
             "-c", "copy",
             "-shortest",
-            out,
+            (left == 0) ? leftVid : rightVid,
             NULL
         };
-
-        pid_t pid = fork();
-        if (pid < 0) return false;
-
-        if (!pid) { // child
-            int fd = open("/dev/null", O_RDWR);
-            if (fd >= 0) {
-                dup2(fd, STDIN_FILENO);
-                dup2(fd, STDOUT_FILENO);
-                dup2(fd, STDERR_FILENO);
-                if (fd > STDERR_FILENO) close(fd);
-            }
-            execvp("ffmpeg", args);
-            _exit(127);
-        }
-
-        int status;
-        while (waitpid(pid, &status, 0) < 0 && errno == EINTR);
+        execvp("ffmpeg", args);
+        _exit(BAD);
     }
-    ncplane_destroy(box);
-    free(name);
-    return rc;
+    int leftStatus;
+    int rightStatus;
+    waitpid(left, &leftStatus, 0);
+    waitpid(right, &rightStatus, 0);
+    if (WIFEXITED(leftStatus) || WIFEXITED(rightStatus)) {
+        if (WEXITSTATUS(leftStatus) || WEXITSTATUS(rightStatus)) {
+            return BAD_SAVE;
+        }
+    } else {
+        return BAD_SAVE;
+    }
+    free(video1); free(video2); free(audio); 
+    free(leftVid); free(rightVid);
+    return GOOD;
 }
 
-static char *save_lecture_name(nav_t *nav) {
-    if (nav->depth < 1) {
-        return NULL;
-    }
-    const entry_t *course  = nav->path[nav->depth];
-    const entry_t *lecture = nav_selected(nav);   // NULL when the list is empty
-    if (lecture == NULL || course->label == NULL || lecture->label == NULL) {
-        return NULL;
+int save_lecture(struct notcurses* nc, Cursor* cursor, char* root)
+{
+    int exitCode = GOOD;
+    char* savePath;
+
+    struct ncplane* box = NULL;
+    if ((exitCode = draw_savebox(nc, &box, 
+                    "Enter save path (relative to home dir):"))) {
+        return exitCode;
     }
 
-    int len = snprintf(NULL, 0, "%s_%s", course->label, lecture->label);
-    if (len < 0) {
-        return NULL;
+    if ((exitCode = get_save_path(nc, box, &savePath))) {
+        ncplane_destroy(box);
+        return exitCode;
     }
-    char *s = malloc((size_t)len + 1);
-    if (s != NULL) {
-        snprintf(s, (size_t)len + 1, "%s_%s", course->label, lecture->label);
+    char* key = get_courseKey(cursor);
+    int lecNum = get_currLec(cursor) + 1;
+    char* lecDir = build_dir(root, key, lecNum);
+    
+    if (!is_lec_downloaded(lecDir)) {
+        draw_savebox(nc, &box, "Downloading lecture.");
+        if ((exitCode = get_lecture(lecDir))) {
+            // NEED SOME ERROR HANDLING HERE WHEN FAILS
+            cleanup_saving((char*[]) {lecDir, savePath, NULL}, box);
+            return exitCode;
+        }
     }
-    return s;
+
+    char* code = get_code(cursor);
+    int len = snprintf(NULL, 0, "%s_LEC%d", code, lecNum);
+    char* saveName = malloc(++len * sizeof(char));
+    snprintf(saveName, len, "%s_LEC%d", code, lecNum);
+
+    if ((exitCode = stitch_lecture(lecDir, savePath, saveName))) {
+        draw_savebox(nc, &box, "Could not save lecture to:");
+    } else {
+        draw_savebox(nc, &box, "Saved lecture to:");
+    }
+    fprintf(stderr, "%s\n", savePath);
+    ncplane_putstr_yx(box, 2, 2, savePath);
+    notcurses_render(nc);
+    block_for_input(nc);
+
+    cleanup_saving((char*[]) {lecDir, savePath, NULL}, box);
+    return exitCode;
 }

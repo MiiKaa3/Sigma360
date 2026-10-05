@@ -27,7 +27,7 @@ add_executable(sigma360
     src/tui_image.c
     src/const.c
     src/fetch.c
-    src/saving_tmp.c
+    src/saving.c
 )
 
 target_include_directories(sigma360 PRIVATE src)

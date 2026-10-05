@@ -65,7 +65,7 @@ int read_file(char* dir, char** file)
  */
 int build_tree(char** root)
 {
-    char* file;
+    char* file = NULL;
     read_file(coursesJSON, &file);
     char template[] = "/tmp/sigma_XXXXXX";
     *root = strdup(mkdtemp(template));
@@ -315,6 +315,22 @@ char* build_dir(char* root, char* url, int lecNum)
     return lecture;
 }
 
+/**
+ * Constructs a popup with 'rows' rows and 'cols' cols. Centers the popup in
+ * the screen. Popup has rounded border of colour COL_BORDER_ACTIVE 
+ * (see const.h) and text of colour COL_HELP_DESC. Background is opaque and
+ * takes its colour from the terminal background.
+ * @param nc A pointer to the notcurses struct instance representing the 
+ *      program display.
+ * @param box  A pointer to an uninitialised pointer to a ncplane struct.
+ * @param rows Number of rows the popup box will have.
+ * @param cols Number of columns the popup box will have.
+ * @returns
+ *      BAD         given the popup plane fails to build.
+ *      BAD_SIZE    if rows and cols produces a popup that does not fit within
+ *          window size.
+ *      GOOD        upon success.
+ */
 int build_popup(struct notcurses* nc, struct ncplane** box, 
         int rows, int cols)
 {
@@ -341,12 +357,14 @@ int build_popup(struct notcurses* nc, struct ncplane** box,
         return BAD;
     }
 
+    // Create opaque background with default terminal colour
     nccell base = NCCELL_TRIVIAL_INITIALIZER;
-    nccell_load_char(*box, &base, ' ');   /* a real space, not an empty glyph */
+    nccell_load_char(*box, &base, ' ');
     nccell_set_bg_default(&base);
     ncplane_set_base_cell(*box, &base);
     nccell_release(*box, &base);
     
+    // Create border
     uint64_t ch = 0;
     ncchannels_set_bg_default(&ch);
     ncchannels_set_fg_rgb(&ch, COL_BORDER_ACTIVE);
@@ -354,10 +372,22 @@ int build_popup(struct notcurses* nc, struct ncplane** box,
 
     ncplane_set_fg_rgb(*box, COL_HELP_DESC);
     ncplane_set_bg_default(*box);
-    ncplane_putstr_yx(*box, 1, 2, "Downloading...");
     return GOOD;
 }
 
+/**
+ * Builds a plane and populates it with an ncreader instance. Reader
+ * horizontally scrolls upon overflow and displays cursor.
+ * @param box     A pointer to the ncplane struct that the reader will be
+ *      contained in.
+ * @param reader  A pointer to an uninitialised pointer to an ncreader struct
+ *      to be initialised via this function.
+ * @param options The x, y, rows, and columns of the reader. Other options can
+ *      be specified but dimensions and rows/cols are minimum required.
+ * @returns
+ *      BAD     given failure to create reader plane or reader.
+ *      GOOD    upon success.
+ */
 int build_reader(struct ncplane* box, struct ncreader** reader,
         struct ncplane_options options)
 {
@@ -381,10 +411,24 @@ int build_reader(struct ncplane* box, struct ncreader** reader,
     return GOOD;
 }
 
+/**
+ * Handles user input through an ncreader instances. Returns the result of
+ * user input into the address pointed to by {@param result}. Reader terminated
+ * by RETURN key. ESC key stops reader and discards the user input. Reader and
+ * reader plane destroyed upon function return.
+ * @param nc     A pointer to the notcurses struct instance representing the 
+ *      program display.
+ * @param reader A pointer to an instance of a ncreader struct representing the
+ *      object that reads the user's input.
+ * @param result A pointer to the user's resultant input upon RETURN key.
+ * @returns 
+ *      BAD     given ESC key input.
+ *      GOOD    upon RETURN key input
+ */
 int read_popup_input(struct notcurses* nc, struct ncreader* reader,
     char** result)
 {
-    bool unwanted = false;
+    bool unwanted = true;
     struct ncinput input;
     while (1) {
         notcurses_render(nc);
@@ -397,18 +441,35 @@ int read_popup_input(struct notcurses* nc, struct ncreader* reader,
             continue;
         }
         if (id == NCKEY_ESC) {
-            unwanted = true;
             break;
         }
         if (id == NCKEY_ENTER) {
+            unwanted = false;
             break;
         }
         ncreader_offer_input(reader, &input);
     }
     if (unwanted) {
         ncreader_destroy(reader, NULL);
-        return -1;
+        return BAD;
     }
     ncreader_destroy(reader, result);
     return GOOD;
+}
+
+/**
+ * Halts the program until any keystroke is registered. Blocking call.
+ * May or may not register CRTL or SHIFT or ALT, only character keystrokes.
+ * @param nc A pointer to the notcurses struct instance representing the 
+ *      program display.
+ */
+void block_for_input(struct notcurses* nc)
+{
+    struct ncinput input;
+    while (true) {
+        uint32_t id = notcurses_get_blocking(nc, &input);
+        if (id == (uint32_t) -1 || input.evtype != NCTYPE_RELEASE) {
+            break;
+        }
+    }
 }

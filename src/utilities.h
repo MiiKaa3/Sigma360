@@ -37,4 +37,6 @@ int build_reader(struct ncplane* box, struct ncreader** reader,
 int read_popup_input(struct notcurses* nc, struct ncreader* reader,
     char** result);
 
+void block_for_input(struct notcurses* nc);
+
 #endif // UTILITIES_H

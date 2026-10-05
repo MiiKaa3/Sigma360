@@ -1,3 +1,4 @@
+
 #ifndef NAVIGATION_H
 #define NAVIGATION_H
 
@@ -15,6 +16,7 @@ typedef struct {
     /// The lecture number i.e. one lecture a week give week 7's lecture having
     /// lectureNum = 7
     int      lectureNum;
+    /// Whether the lecture is currently downloaded. Currently not used.
     bool        downloaded;
 } Lecture;
 
@@ -39,6 +41,7 @@ typedef struct {
  * Structure that defines a single Course.
  */
 typedef struct {
+    /// Information attached to the course. See CourseData.
     CourseData* data;
     /// List of lectures available for download in a course
     Lecture*    lectures;
