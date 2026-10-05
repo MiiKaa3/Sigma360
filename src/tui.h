@@ -1,3 +1,8 @@
+/**
+ * @file tui.h
+ * @author MiiKaa3
+ * @brief Header file for tui.c
+ */
 #ifndef TUI_H
 #define TUI_H
 

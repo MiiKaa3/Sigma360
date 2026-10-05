@@ -1,4 +1,8 @@
-
+/**
+ * @file navigation.h
+ * @author sammado103 (refactored from MiiKaa3's work)
+ * @brief Header file for navigation.c
+ */
 #ifndef NAVIGATION_H
 #define NAVIGATION_H
 

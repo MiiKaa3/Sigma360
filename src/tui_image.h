@@ -1,3 +1,8 @@
+/**
+ * @file tui_image.h
+ * @author Miikaa3
+ * @brief Header file for tui_image.c
+ */
 #ifndef TUI_IMAGE_H
 #define TUI_IMAGE_H
 
@@ -13,6 +18,7 @@ typedef struct {
     char* image;
     /// The notcurses interpretation of the image, for blitting purposes
     struct ncvisual* ncimage;
+    /// The image plane storing the blitting of the image.
     struct ncplane* imagePlane;
 } imageData;
 

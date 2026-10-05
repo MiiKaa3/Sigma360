@@ -2,7 +2,6 @@ Daniel's Focus:
     1. Better cookie fetching. Don't want to get cookies every 3 hours.
     2. .conf file where user can customise & put login details
 
-
 Sam's Focus:
     1. UNIVERSAL ERROR CODE SYSTEM AND ERROR MESSAGES
         - err.h with exitCodes and error messages
@@ -24,6 +23,9 @@ Sam's Focus:
     > Need to formalise pathing from cmds run (i.e. the fetcher.py problem)
     > buildArgs is dirty code.
     > Reader doesn't delete the first character in its buffer upon backspace
+    > Need to change timestamp inputs for kitty so we don't need to convert
+      inside watch.
+    > Memory safety :)
 
 4. EXTRA FUNCTIONALITY
     - Create a .conf file containing: 

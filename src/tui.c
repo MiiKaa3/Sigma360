@@ -1,3 +1,9 @@
+/**
+ * @file tui.c
+ * @author MiiKaa3
+ * @brief The nuts of the program. File moderates the generation of the display
+ *      and interaction with the user.
+ */
 #include "tui.h"
 #include "navigation.h"
 #include "utilities.h"
@@ -76,7 +82,6 @@ static void destroy_screen(Screen* screen)
  *      BAD_SIZE    given the frameOpts describes too small a frame.
  *      BAD_FRAME   given failure to create frame or contents panes.
  *      GOOD        upon success.
- *
  */
 static int make_pane(struct ncplane* std, Pane* pane, 
         struct ncplane_options frameOpts, panerole role)
@@ -409,7 +414,8 @@ static int get_timestamp(struct notcurses* nc, char** timestamp);
  * displaying. Dispatches videos, saving, thumbnails, etc.
  * @returns The exitCode of the program
  */
-int tui() {
+int tui() 
+{
 
     int exitCode = GOOD;
 
@@ -620,12 +626,13 @@ int tui() {
  * run ./src/cmds/watch, which takes arguements -l and a directory to try
  * watch from, -t and a timestamp to start recording from, and -s to watch
  * both recordings or just the main screen. Reaps child process.
- * @param
- * @param
- * @param
+ * @param dir   The directory of the lecture to watch.
+ * @param split Whether both screens should be played.
+ * @param time  The timestamp to start video at.
  * @returns
- *      BAD     upon failure to exec ./src/cmds/watch.
- *
+ *      BAD     given failure to exec ./src/cmds/watch.
+ *      exit code of .src/cmds/watch.
+ *      GOOD    upon success.
  */
 static int watch_lec(char* dir, bool split, char* time)
 {
@@ -650,6 +657,17 @@ static int watch_lec(char* dir, bool split, char* time)
 //  Timestamp grabbing                         //
 // ------------------------------------------- //
 
+/**
+ * Given the user wants to provide a starting timestamp, gets the user input
+ * Does no timestamp validation, that is left to the watch command.
+ * @param nc        The notcurses struct containing the panes that can be drawn.
+ * @param timestamp A pointer the an uninitialised string to be populated with
+ *      the users starting timestamp.
+ * @returns
+ *      BAD         given failure to generate structures to get timestamp.
+ *      BAD_SIZE    given the window size cannot support the timestamp popup.
+ *      GOOD        upon succes.
+ */
 static int get_timestamp(struct notcurses* nc, char** timestamp)
 {
     // rows = 5, cols = 50. Adjustable to desired window size
@@ -679,6 +697,12 @@ static int get_timestamp(struct notcurses* nc, char** timestamp)
     return exitCode;
 }
 
+/**
+ * Builds a popup that says "Downloading...". Nothing special.
+ * @param nc  The notcurses struct containing the panes that can be drawn.
+ * @param box A pointer to an uninitialised ncplane struct to be populated with
+ *      the constructed popup
+ */
 void build_download_box(struct notcurses* nc, struct ncplane** box)
 {
     build_popup(nc, box, DWNLD_BOX_H, DWNLD_BOX_W);

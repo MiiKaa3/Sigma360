@@ -1,3 +1,8 @@
+#
+# @file fetcher.py
+# @author dkasumagic
+# @brief Fetches cookies, lectures, thumbnails, and course.json
+#
 import os
 import base64
 import json 
