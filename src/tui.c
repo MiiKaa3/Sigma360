@@ -210,7 +210,7 @@ static void clamp_view(Cursor* cursor, int rows)
     }
 }
 
-./**
+/**
  * Draws the logo to the desired plane. 
  * @param p Plane to be drawn to.
  */
@@ -524,7 +524,9 @@ int tui()
             continue;
         }
 
-        else if (id == 'j' || id == NCKEY_DOWN) {
+        char* dir = build_dir(root, 
+                get_courseKey(&cursor), (int) get_currLec(&cursor) + 1);
+        if (id == 'j' || id == NCKEY_DOWN) {
             move_cursor_x(&cursor, 1);
         } else if (id == 'k' || id == NCKEY_UP) {
             move_cursor_x(&cursor, -1);
@@ -535,8 +537,6 @@ int tui()
         } else if (id == NCKEY_ENTER && !ni.shift) {
             if (cursor.level > 0 && get_lecCount(&cursor) > 0) {
                 // Grab the lecture's /tmp directory name
-                char* dir = build_dir(root, 
-                        get_courseKey(&cursor), (int) get_currLec(&cursor) + 1);
                 // Check if there's anything in it.
                 if (!is_lec_downloaded(dir)) {
                     struct ncplane* box = NULL;
@@ -549,7 +549,6 @@ int tui()
                 } else {
                     watch_lec(dir, false, "00;00;00");
                 }
-                free(dir);
             }
         } else if (id == 's' && cursor.level > 0) { // Only save lectures
             if (cursor.level > 0 && get_lecCount(&cursor) > 0) {
@@ -557,11 +556,9 @@ int tui()
                 save_lecture(nc, &cursor, root);
             }
         } else if (id == NCKEY_ENTER && ni.shift) {
-            dispatch_watch(&cursor, root, true, "00;00;00");
+            watch_lec(dir, true, "00;00;00");
         } else if (id == 't') {
             if (cursor.level > 0 && get_lecCount(&cursor) > 0) {
-                char* dir = build_dir(root, 
-                        get_courseKey(cursor), (int) get_currLec(cursor) + 1);
                 char* timestamp = NULL;
                 preview_image_clear(&screen.preview);
                 if (!get_timestamp(nc, &timestamp)) {
@@ -572,12 +569,9 @@ int tui()
                 if (timestamp) {
                     free(timestamp);
                 }
-                free(dir);
             }
         } else if (id == 'T') {
             if (cursor.level > 0 && get_lecCount(&cursor) > 0) {
-                char* dir = build_dir(root, 
-                        get_courseKey(cursor), (int) get_currLec(cursor) + 1);
                 char* timestamp;
                 preview_image_clear(&screen.preview);
                 if (!get_timestamp(nc, &timestamp)) {
@@ -588,7 +582,6 @@ int tui()
                 if (timestamp) {
                     free(timestamp);
                 }
-                free(dir);
             }
         } else {
             continue; // some unbound key; no redraw required
@@ -596,11 +589,8 @@ int tui()
 
         // Generate preview image. This doesn't work well, see TODO
         if (cursor.level == DEEPEST_LEVEL) {
-            char* dir = build_dir(root, 
-                    get_courseKey(&cursor), (int) get_currLec(&cursor) + 1);
             expand_path(&dir);
             char* thumbnail = build_args(dir, "t.jpg");
-            free(dir);
             if (access(thumbnail, F_OK) == 0) { // man access
                 preview_image_show(&screen.preview, thumbnail);
             } else {
@@ -610,6 +600,7 @@ int tui()
         } else {
             preview_image_clear(&screen.preview);
         }
+        free(dir);
         draw_all(&screen, &cursor);
         notcurses_render(nc);
     }
