@@ -1,4 +1,10 @@
-#pragma once
+/**
+ * @file navigation.h
+ * @author sammado103 (refactored from MiiKaa3's work)
+ * @brief Header file for navigation.c
+ */
+#ifndef NAVIGATION_H
+#define NAVIGATION_H
 
 #include <stdbool.h>
 #include <cjson/cJSON.h>
@@ -14,9 +20,14 @@ typedef struct {
     /// The lecture number i.e. one lecture a week give week 7's lecture having
     /// lectureNum = 7
     int      lectureNum;
+    /// Whether the lecture is currently downloaded. Currently not used.
     bool        downloaded;
 } Lecture;
 
+/**
+ * Structure that store all necessary information attached to a course.
+ * (Tried to debloat the course struct but maybe thats not necessary?)
+ */
 typedef struct {
     /// Code of course
     char*       courseCode;
@@ -29,10 +40,12 @@ typedef struct {
     /// Flag to see if the course is currently studied
     bool        isActive;
 } CourseData;
+
 /**
  * Structure that defines a single Course.
  */
 typedef struct {
+    /// Information attached to the course. See CourseData.
     CourseData* data;
     /// List of lectures available for download in a course
     Lecture*    lectures;
@@ -63,8 +76,6 @@ typedef struct {
 
 /* FUNCTION DEFINITIONS     */
 
-int get_course_data(CourseData* data, cJSON* course);
-
 int init_cursor(Cursor* cursor, cJSON* json);
 
 bool move_cursor_x(Cursor* cursor, int dx);
@@ -84,3 +95,7 @@ int get_currLec(Cursor* cursor);
 int* get_topCourse(Cursor* cursor);
 
 int* get_topLecture(Cursor* cursor);
+
+char* get_code(Cursor* cursor);
+
+#endif // NAVIGATION_H

@@ -1,9 +1,26 @@
-#ifndef __ERR_H__
-#define __ERR_H__
+/**
+ * @file const.h
+ * @authour sammado103
+ * @brief Header for const.c. Similarly stores macros for error messages and 
+ * other number constants like rgb values.
+ */
+#ifndef CONST_H
+#define CONST_H
 
 /*  CONSTANTS           */
 
-#define DEEPEST_LEVEL   1   // Defines the deepest level the cursor can take
+#define DEEPEST_LEVEL     1  // Defines the deepest level the cursor can take
+#define DETAILS_MIN_COLS  10 // The minimum number of columns for each pane
+#define HELP_ROWS         3  // The number of rows the HELP pane takes up
+#define MIN_COLS          3  // The minimum number of columns a pane can have
+#define MIN_ROWS          3  // The minimum number of rows a pane can have
+#define DEEPEST_LEVEL     1   // Defines the deepest level the cursor can take
+#define SAVE_BOX_H        5
+#define SAVE_BOX_W        60
+#define TIME_BOX_H        5
+#define TIME_BOX_W        50
+#define DWNLD_BOX_H       3
+#define DWNLD_BOX_W       40
 
 #define COL_TEXT_DEF      0xf0f0f0
 #define COL_BORDER_DIM    0x6272a4u
@@ -18,6 +35,9 @@
 
 /*  STRING CONSTANTS    */
 
+extern const char* const version;
+
+extern const char* const defaultImage;
 extern char* const coursesJSON;
 extern const char* const fetcher;
 extern char* const watch;
@@ -36,16 +56,24 @@ extern const char* const girlScout;
 #define BAD_DIR         7
 #define BAD_CURSOR      8
 #define BAD_PANES       9
-#define BAD_CMD_EXEC    10
+/* #define     10 */
+#define BAD_COOKIES     12
+#define BAD_LEC_GET     13
+#define BAD_THUMB       14
+#define BAD_USAGE       15
+#define BAD_PANE        16
+#define BAD_SIZE        17
+#define BAD_IMAGE       18
+#define BAD_SAVE        19
+#define BAD_FRAME       20
 
 /*  ERROR MESSAGES      */
 
 extern const char* const badCWD;
-
 extern const char* const watchUsage;
-
 extern const char* const watchTimeUsage; 
-
 extern const char* const badTimestamp;
+extern const char* const mainUsage;
 
-#endif // __ERR_H__
+extern const char* const mainHelp;
+#endif // CONST_H

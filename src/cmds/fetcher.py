@@ -1,3 +1,8 @@
+#
+# @file fetcher.py
+# @author dkasumagic
+# @brief Fetches cookies, lectures, thumbnails, and course.json
+#
 import os
 import base64
 import json 
@@ -50,7 +55,7 @@ class Fetcher():
     # Functionality that retrieves the video files for a certain lecture
     def watch(self, output_path:str):
         if not self.check_auth():
-            return 1
+            return 13
         
         section_id, lecture_number = output_path.split("/")[-2:]
         lecture_number = lecture_number[7:]
@@ -61,7 +66,7 @@ class Fetcher():
 
         medias = target["lesson"]["medias"]
         if len(medias) == 0:
-            return 2
+            return 13
 
         media_id = medias[0]["id"]  # mediaId is shared across sources for one lesson
 
@@ -110,7 +115,6 @@ class Fetcher():
                     except Exception as e:
                         print(f"Failed for {path}: {e}")
                     t.sleep(0.2)
-        
         return 0
 
     def load_session(self, cookie_file:str) -> requests.Session:

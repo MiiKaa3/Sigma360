@@ -1,30 +1,31 @@
-1. UNIVERSAL ERROR CODE SYSTEM AND ERROR MESSAGES
-    - err.h with exitCodes and error messages
-        > changge err.h -> const.h
-        > refactor/err handling up to coment in tui.c
-2. ERR HANDLING
-    - Generally catch errors and print output in an error pane and 
-      properly exit
-3. REFACTOR
-    - catch any bugs from use.
-    - Refactor the actual tui display and shit
-    KNOWN BUGS/BAD CODE:
-        > active courses don't change colour until cursor moves over/past
-        > Filetree is sometimes not made?
-        > utilities.c/findcwd - _PC_PATH_MAX not general enough for arbitrary
-        file system
-        > If there already exists a courses.json, this wont be updated when
-        new cookies are grabbed or new lectures uploaded. Either add
-        'u  update' to update courses.json or remove courses.json each time
-        > Some stuff works on Konsole and not on Kitty, e.g. certain keystrokes
-        Maybe port to most up-to-date terminal protocol on arch
-        > MPV rewinding video cuts out audio. Potentially a caused by linking
-        audio and video at runtime.
-        > preview image doesn't clear properly when cursor on courses
-        > not all thumbnails are collected.
-        > proper exit cleanup routine
-        > Want to delete "downloading" box once downloaded and before playing
-        > Need to formalise pathing from cmds run (i.e. the fetcher.py problem)
+Daniel's Focus:
+    1. Better cookie fetching. Don't want to get cookies every 3 hours.
+    2. .conf file where user can customise & put login details
+
+Sam's Focus:
+    1. UNIVERSAL ERROR CODE SYSTEM AND ERROR MESSAGES
+        - err.h with exitCodes and error messages
+            > refactor/err handling up to coment in tui.c
+    2. ERR HANDLING
+        - Generally catch errors and print output in an error pane and 
+          properly exit
+
+3. BUGS
+    > utilities.c/findcwd - _PC_PATH_MAX not general enough for arbitrary
+    file system
+    > Some stuff works on Konsole and not on Kitty, e.g. certain keystrokes
+    Maybe port to most up-to-date terminal protocol on arch
+    > MPV rewinding video cuts out audio. Potentially a caused by linking
+    audio and video at runtime.
+    > preview image doesn't clear properly when cursor on courses
+    > proper exit cleanup routine
+    > Want to delete "downloading" box once downloaded and before playing
+    > Need to formalise pathing from cmds run (i.e. the fetcher.py problem)
+    > buildArgs is dirty code.
+    > Reader doesn't delete the first character in its buffer upon backspace
+    > Need to change timestamp inputs for kitty so we don't need to convert
+      inside watch.
+    > Memory safety :)
 
 4. EXTRA FUNCTIONALITY
     - Create a .conf file containing: 
@@ -34,4 +35,11 @@
     - Have some sort of binary that can open sigma360 anywhere in the system
     - Have a "playing" box when video is playing.
     - Signal handling?
-
+    - Dynamically sized panes to fit other things in? Panes are currently fixed
+      size and have a lot of wasted space. Could minimise this? Or least least
+      have different pane widths for each level?
+    - Multiple images per pane? At the moment only on per pane is supported
+    - If the user hovers over a lecture for long enough (like 5 seconds) play a 
+      preview of the lecture (choose the halfway of a lecture or something)
+    - Change saving functionality to just save to Downloads folder. Difficulty
+      with handling excessively long path lengths.
