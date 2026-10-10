@@ -477,15 +477,15 @@ void block_for_input(struct notcurses* nc)
     }
 }
 
-int build_dump_file()
+int build_dump_file(char** dumpFile)
 {
     time_t datetime = time(NULL);
     char* timeStr = ctime(&datetime);
     timeStr[strlen(timeStr) - 1] = '\0';
-    char* dumpFile = build_args("./dump/%s", timeStr);
-    for (size_t i = 0; i < strlen(dumpFile); i++) {
-        if (dumpFile[i] == ' ') {
-            dumpFile[i] = '_';
+    *dumpFile = build_args("./dump/%s", timeStr);
+    for (size_t i = 0; i < strlen(*dumpFile); i++) {
+        if ((*dumpFile)[i] == ' ') {
+            (*dumpFile)[i] = '_';
         }
     }
 
@@ -493,8 +493,7 @@ int build_dump_file()
         mkdir("./dump/", 0777);
     }
 
-    int errfd = open(dumpFile, O_CREAT | O_RDWR | O_TRUNC, S_IRWXU);
-    free(dumpFile);
+    int errfd = open(*dumpFile, O_CREAT | O_RDWR | O_TRUNC, S_IRWXU);
     dup2(errfd, STDERR_FILENO);
     close(errfd);
     return GOOD;

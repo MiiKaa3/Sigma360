@@ -15,14 +15,17 @@
 #define MIN_COLS          3  // The minimum number of columns a pane can have
 #define MIN_ROWS          3  // The minimum number of rows a pane can have
 #define DEEPEST_LEVEL     1   // Defines the deepest level the cursor can take
+
 #define SAVE_BOX_H        5
 #define SAVE_BOX_W        60
 #define TIME_BOX_H        5
 #define TIME_BOX_W        50
 #define DWNLD_BOX_H       3
 #define DWNLD_BOX_W       40
+#define QUIT_BOX_H        5
+#define QUIT_BOX_W        60
 
-#define COL_TEXT_DEF      0xf0f0f0
+#define COL_TEXT_DEF      0xf0f0f1
 #define COL_BORDER_DIM    0x6272a4u
 #define COL_BORDER_ACTIVE 0xbd93f9u
 #define COL_SEL_BG_ACTIVE 0x2f7482u

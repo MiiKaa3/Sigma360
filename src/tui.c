@@ -409,6 +409,7 @@ static void draw_all(Screen* screen, Cursor* cursor)
 static void build_download_box(struct notcurses* nc, struct ncplane** box);
 static int watch_lec(char* dir, bool split, char* time);
 static int get_timestamp(struct notcurses* nc, char** timestamp);
+static void verify_quitting(struct notcurses* nc);
 
 /**
  * Where the bread gets made. This function handles user inputs and run time
@@ -418,14 +419,14 @@ static int get_timestamp(struct notcurses* nc, char** timestamp);
 int tui() 
 {
     int exitCode = GOOD;
-    build_dump_file();
+    char* dumpFile;
+    build_dump_file(&dumpFile);
 
     // SETUP ROUTINE
 
     if ((exitCode = get_cookies())) {
         return exitCode;
     }
-    fprintf(stderr, "Cookies Successfully fetched");
 
     cJSON* json;
     if ((exitCode = read_courses_json(coursesJSON, &json))) {
@@ -485,16 +486,16 @@ int tui()
         if (ni.evtype == NCTYPE_RELEASE) {
             continue; // ignore key-up on Kitty-protocol terminals
         }
-        //
-        // Want to implement a "Are you sure you want to quit" box
-        //
         if (id == 'q' || id == NCKEY_ESC) {
+            verify_quitting(nc);
+
             kill(thumbGetter, SIGKILL);
             waitpid(thumbGetter, NULL, 0);
 
             pid_t quitter = fork();
             if (!quitter) {
-                execlp("rm", "rm", "-rf", root, coursesJSON, NULL);
+                execlp("rm", "rm", "-rf", 
+                        root, coursesJSON, dumpFile, NULL);
                 _exit(BAD);
             }
             waitpid(quitter, NULL, 0);
@@ -699,4 +700,35 @@ void build_download_box(struct notcurses* nc, struct ncplane** box)
     build_popup(nc, box, DWNLD_BOX_H, DWNLD_BOX_W);
     ncplane_putstr_yx(*box, 1, 2, "Downloading...");
     notcurses_render(nc);
+}
+
+static void verify_quitting(struct notcurses* nc)
+{
+    struct ncplane* box;
+    build_popup(nc, &box, QUIT_BOX_H, QUIT_BOX_W);
+    if (!box) { 
+        return;
+    }
+
+    struct ncinput input;
+    bool yes = true;
+    while (true) {
+        
+        ncplane_putstr_yx(box, 1, 2, "Are you sure you would like to quit?");
+        if (yes) {
+            ncplane_set_fg_rgb(box, COL_ACTIVE_COURSE);
+            ncplane_putstr_yx(box, 3, (QUIT_BOX_W / 3) - 2, "Yes");
+            ncplane_set_fg_rgb(box, COL_HELP_DESC);
+            ncplane_putstr_yx(box, 3, 2 * QUIT_BOX_W / 3 , "No");
+        } else {
+            ncplane_set_fg_rgb(box, COL_ACTIVE_COURSE);
+            ncplane_putstr_yx(box, 3, 2 * QUIT_BOX_W / 3 , "No");
+            ncplane_set_fg_rgb(box, COL_HELP_DESC);
+            ncplane_putstr_yx(box, 3, (QUIT_BOX_W / 3) - 2, "Yes");
+        }
+
+        notcurses_render(nc);
+        block_for_input(nc);
+        break;
+    }
 }
