@@ -409,7 +409,7 @@ static void draw_all(Screen* screen, Cursor* cursor)
 static void build_download_box(struct notcurses* nc, struct ncplane** box);
 static int watch_lec(char* dir, bool split, char* time);
 static int get_timestamp(struct notcurses* nc, char** timestamp);
-static void verify_quitting(struct notcurses* nc);
+static int verify_quitting(struct notcurses* nc);
 
 /**
  * Where the bread gets made. This function handles user inputs and run time
@@ -487,19 +487,20 @@ int tui()
             continue; // ignore key-up on Kitty-protocol terminals
         }
         if (id == 'q' || id == NCKEY_ESC) {
-            verify_quitting(nc);
+            if (!verify_quitting(nc)) {
+                kill(thumbGetter, SIGKILL);
+                waitpid(thumbGetter, NULL, 0);
 
-            kill(thumbGetter, SIGKILL);
-            waitpid(thumbGetter, NULL, 0);
-
-            pid_t quitter = fork();
-            if (!quitter) {
-                execlp("rm", "rm", "-rf", 
-                        root, coursesJSON, dumpFile, NULL);
-                _exit(BAD);
+                pid_t quitter = fork();
+                if (!quitter) {
+                    execlp("rm", "rm", "-rf", 
+                            root, coursesJSON, dumpFile, NULL);
+                    _exit(BAD);
+                }
+                waitpid(quitter, NULL, 0);
+                break; // quiting out
             }
-            waitpid(quitter, NULL, 0);
-            break; // quiting out
+            continue;
         }
 
         if (id == NCKEY_RESIZE) {
@@ -702,12 +703,13 @@ void build_download_box(struct notcurses* nc, struct ncplane** box)
     notcurses_render(nc);
 }
 
-static void verify_quitting(struct notcurses* nc)
+static int verify_quitting(struct notcurses* nc)
 {
+    int exitCode = GOOD;
     struct ncplane* box;
     build_popup(nc, &box, QUIT_BOX_H, QUIT_BOX_W);
     if (!box) { 
-        return;
+        return BAD;
     }
 
     struct ncinput input;
@@ -726,9 +728,31 @@ static void verify_quitting(struct notcurses* nc)
             ncplane_set_fg_rgb(box, COL_HELP_DESC);
             ncplane_putstr_yx(box, 3, (QUIT_BOX_W / 3) - 2, "Yes");
         }
-
         notcurses_render(nc);
-        block_for_input(nc);
-        break;
+
+        uint32_t id = notcurses_get_blocking(nc, &input);
+        if (id == (uint32_t) -1) {
+            exitCode = BAD;
+            break;
+        }
+        if (input.evtype == NCTYPE_RELEASE) {
+            continue;
+        } 
+        if (id == NCKEY_ESC) {
+            exitCode = 1;
+            break;
+        }
+        if (id == NCKEY_ENTER) {
+            exitCode = yes ? GOOD : 1;
+            break;
+        }
+        if (id == 'l' && yes) {
+            yes = false;
+        } else if (id == 'h' && !yes) {
+            yes = true;
+        }
     }
+    ncplane_destroy(box);
+    notcurses_render(nc);
+    return exitCode;
 }
