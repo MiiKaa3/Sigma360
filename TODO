@@ -43,3 +43,6 @@ Sam's Focus:
       preview of the lecture (choose the halfway of a lecture or something)
     - Change saving functionality to just save to Downloads folder. Difficulty
       with handling excessively long path lengths.
+    - Download box animations?!
+    - Download timeout? Way to tell if downloading stalls? Do we just give a 
+      certain amount of seconds?

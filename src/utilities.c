@@ -7,9 +7,12 @@
 #include <stdlib.h>
 #include <unistd.h> 
 #include <stdbool.h>
+#include <fcntl.h>
 #include <stdio.h>
 #include <string.h>
 #include <dirent.h>
+#include <time.h>
+#include <errno.h>
 
 #include <cjson/cJSON.h>
 #include <notcurses/notcurses.h>
@@ -472,4 +475,27 @@ void block_for_input(struct notcurses* nc)
             break;
         }
     }
+}
+
+int build_dump_file()
+{
+    time_t datetime = time(NULL);
+    char* timeStr = ctime(&datetime);
+    timeStr[strlen(timeStr) - 1] = '\0';
+    char* dumpFile = build_args("./dump/%s", timeStr);
+    for (size_t i = 0; i < strlen(dumpFile); i++) {
+        if (dumpFile[i] == ' ') {
+            dumpFile[i] = '_';
+        }
+    }
+
+    if (!opendir("./dump/") && errno == ENOENT) {
+        mkdir("./dump/", 0777);
+    }
+
+    int errfd = open(dumpFile, O_CREAT | O_RDWR | O_TRUNC, S_IRWXU);
+    free(dumpFile);
+    dup2(errfd, STDERR_FILENO);
+    close(errfd);
+    return GOOD;
 }

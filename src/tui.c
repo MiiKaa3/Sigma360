@@ -27,6 +27,7 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <fcntl.h>
+#include <time.h>
 
 bool window_too_small = false;
 
@@ -412,18 +413,19 @@ static int get_timestamp(struct notcurses* nc, char** timestamp);
 /**
  * Where the bread gets made. This function handles user inputs and run time
  * displaying. Dispatches videos, saving, thumbnails, etc.
- * @returns The exitCode of the program
+ * @returns The exitCode of the program.
  */
 int tui() 
 {
-
     int exitCode = GOOD;
+    build_dump_file();
 
     // SETUP ROUTINE
 
     if ((exitCode = get_cookies())) {
         return exitCode;
     }
+    fprintf(stderr, "Cookies Successfully fetched");
 
     cJSON* json;
     if ((exitCode = read_courses_json(coursesJSON, &json))) {

@@ -39,4 +39,6 @@ int read_popup_input(struct notcurses* nc, struct ncreader* reader,
 
 void block_for_input(struct notcurses* nc);
 
+int build_dump_file();
+
 #endif // UTILITIES_H

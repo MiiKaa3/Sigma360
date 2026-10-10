@@ -42,7 +42,7 @@ int get_cookies()
     if (WIFEXITED(status)) {
         return WEXITSTATUS(status);
     } else {
-        return BAD;
+        return GOOD;
     }
 }
 
