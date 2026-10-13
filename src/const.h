@@ -23,7 +23,7 @@
 #define DWNLD_BOX_H       3
 #define DWNLD_BOX_W       40
 #define QUIT_BOX_H        5
-#define QUIT_BOX_W        60
+#define QUIT_BOX_W        40
 
 #define COL_TEXT_DEF      0xf0f0f1
 #define COL_BORDER_DIM    0x6272a4u
@@ -47,20 +47,21 @@ extern char* const watch;
 extern const char* const girlScout;
 
 /*  ERROR CODES         */
+// Fatal error codes are negative, non-fatal codes are positive.
 
+#define BAD_FOPEN      -6
+#define BAD_JSON       -4
+#define BAD_FETCH      -3
+#define BAD_COOKIES    -2
 #define BAD            -1
 #define GOOD            0
 #define BAD_CWD         1
-#define BAD_FETCH       2
 #define BAD_WATCH_PARSE 3
 #define BAD_TIMESTAMP   4
-#define BAD_FOPEN       5
-#define BAD_JSON        6
 #define BAD_DIR         7
 #define BAD_CURSOR      8
 #define BAD_PANES       9
 /* #define     10 */
-#define BAD_COOKIES     12
 #define BAD_LEC_GET     13
 #define BAD_THUMB       14
 #define BAD_USAGE       15

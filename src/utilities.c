@@ -471,9 +471,7 @@ void block_for_input(struct notcurses* nc)
     struct ncinput input;
     while (true) {
         uint32_t id = notcurses_get_blocking(nc, &input);
-        if (id == (uint32_t) -1 || input.evtype != NCTYPE_RELEASE) {
-            break;
-        }
+        break;
     }
 }
 

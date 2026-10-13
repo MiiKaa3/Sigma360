@@ -73,9 +73,9 @@ int preview_image_show(Pane* preview, const char* path)
         ncplane_set_userptr(preview->content, data);
     }
     // Catch if image is already displayed in pane
-    if (data->image && strcmp(path, data->image) == 0) {
-        return GOOD;
-    }
+    /* if (data->image && strcmp(path, data->image) == 0) { */
+    /*     return GOOD; */
+    /* } */
     // Else we want to display the image
     preview_image_clear(preview);
 

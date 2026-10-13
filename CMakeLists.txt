@@ -28,6 +28,7 @@ add_executable(sigma360
     src/const.c
     src/fetch.c
     src/saving.c
+    src/error.c
 )
 
 target_include_directories(sigma360 PRIVATE src)

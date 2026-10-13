@@ -26,6 +26,7 @@ Sam's Focus:
     > Need to change timestamp inputs for kitty so we don't need to convert
       inside watch.
     > Memory safety :)
+    > Thumbnails don't display the thumbnail of the lecture every time.
 
 4. EXTRA FUNCTIONALITY
     - Create a .conf file containing: 

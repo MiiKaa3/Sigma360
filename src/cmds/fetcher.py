@@ -22,7 +22,7 @@ class Fetcher():
     # Functionality that retrieves and makes courses.json
     def load(self, outfile:str="courses.json"):
         if not self.check_auth():
-            return 1
+            return -3
         
         data = self.session.get("https://echo360.net.au/user/enrollments").json()
         loading_data = [] 

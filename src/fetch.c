@@ -14,6 +14,7 @@
 
 #include "utilities.h"
 #include "const.h"
+#include "error.h"
 
 /**
  * Fetch cookies - or at least check that cookies exist - before opening
@@ -31,7 +32,7 @@ int get_cookies()
 {
     pid_t pid = fork();
     if (pid < 0) {
-        return BAD;
+        return write_fatal_error(BAD, "fetch.c:get_cookies()");
     }
     if (!pid) {
         execlp("python3", "python3", girlScout, NULL);
@@ -40,10 +41,13 @@ int get_cookies()
     int status;
     waitpid(pid, &status, 0);
     if (WIFEXITED(status)) {
-        return WEXITSTATUS(status);
+        return write_fatal_error(WEXITSTATUS(status), "fetch.c:get_cookies()");
     } else {
-        return GOOD;
+        return write_fatal_error(
+                BAD_COOKIES, "cmds/girlScout.py:get_echo360_cookies()");
     }
+    fprintf(stderr, "Cookies collected.\n");
+    return GOOD;
 }
 
 /**
@@ -119,7 +123,7 @@ int get_courses_json()
 {
     pid_t pid = fork();
     if (pid < 0) {
-        return BAD;
+        return write_fatal_error(BAD, "fetch.c:get_courses_json()");
     }
     if (!pid) {
         execlp("python3", 
@@ -130,11 +134,10 @@ int get_courses_json()
     int status;
     waitpid(pid, &status, 0);
     if (WIFEXITED(status)) {
-        if (WEXITSTATUS(status)) {
-            return BAD_FETCH;
-        }
+        return write_fatal_error(
+                WEXITSTATUS(status), "fetch.c:get_courses_json()");
     } else {
-        return BAD_FETCH;
+        return write_fatal_error(BAD_FETCH, "fetch.c:get_courses_json()");
     }
     return GOOD;
 }
