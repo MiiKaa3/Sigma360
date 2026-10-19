@@ -470,7 +470,7 @@ void block_for_input(struct notcurses* nc)
 {
     struct ncinput input;
     while (true) {
-        uint32_t id = notcurses_get_blocking(nc, &input);
+        notcurses_get_blocking(nc, &input);
         break;
     }
 }

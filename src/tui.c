@@ -495,7 +495,7 @@ int tui()
                 pid_t quitter = fork();
                 if (!quitter) {
                     execlp("rm", "rm", "-rf", 
-                            root, coursesJSON, dumpFile, NULL);
+                            root, coursesJSON, /*dumpFile*/NULL, NULL);
                     _exit(BAD);
                 }
                 waitpid(quitter, NULL, 0);
@@ -543,8 +543,10 @@ int tui()
                 // Check if there's anything in it.
                 char* dir = build_dir(root, 
                         get_courseKey(&cursor), (int) get_currLec(&cursor) + 1);
+                fprintf(stderr, "Starting %s\n", dir);
                 if (!is_lec_downloaded(dir)) {
                     struct ncplane* box = NULL;
+                    get_cookies();
                     preview_image_clear(&screen.preview);
                     build_download_box(nc, &box);
                     watch_lec(dir, ni.shift ? true : false, "00;00;00");
@@ -554,6 +556,7 @@ int tui()
                 } else {
                     watch_lec(dir, ni.shift ? true : false, "00;00;00");
                 }
+                fprintf(stderr, "%s closed.\n", dir);
                 free(dir);
             }
         } else if (id == 's' && cursor.level > 0) { // Only save lectures
@@ -640,6 +643,7 @@ static int watch_lec(char* dir, bool split, char* time)
 {
     pid_t pid = fork();
 
+    fprintf(stderr, "Downloading and playing %s.\n", dir);
     if (!pid) {
         char* argv[]
             = { watch, "-l", dir, "-t", time, split ? "-s" : NULL, NULL };

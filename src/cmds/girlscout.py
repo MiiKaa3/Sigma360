@@ -31,7 +31,7 @@ def get_echo360_cookies(cookie_file: str = "cookies.json"):
             json.dump(cookies, f, indent=4)
 
         browser.close()
-        print(f"Saved {len(cookies)} cookies to {cookie_file}")
+        # print(f"Saved {len(cookies)} cookies to {cookie_file}")
 
     return 0
 
@@ -59,18 +59,18 @@ def check_auth(cookie_file: str) -> bool:
     expired = {k:v for k,v in expiries.items() if v < now + 300}
     if expired:
         details = ", ".join(f"{k} (expired {int(now - v)}s ago)" for k, v in expired.items())
-        print(f"Cookie(s) expired: {details}")
+        # print(f"Cookie(s) expired: {details}")
         return False 
 
     if expiries:
         soonest_label, soonest_time = min(expiries.items(), key=lambda kv: kv[1])
         remaining = int(soonest_time - now)
-        print(f"Local check ok. Earliest expiry: {soonest_label} in {remaining}s "
-              f"({remaining // 60} min).")
+        # print(f"Local check ok. Earliest expiry: {soonest_label} in {remaining}s "
+        #       f"({remaining // 60} min).")
 
     resp = session.get("https://echo360.net.au/user/enrollments", allow_redirects=True)
     if resp.status_code != 200 or "login" in resp.url.lower():
-        print("Server rejected session — cookies invalid despite local expiry check passing.")
+        # print("Server rejected session — cookies invalid despite local expiry check passing.")
         return False 
     
     return True

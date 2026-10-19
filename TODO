@@ -27,6 +27,8 @@ Sam's Focus:
       inside watch.
     > Memory safety :)
     > Thumbnails don't display the thumbnail of the lecture every time.
+    > Sometimes after exiting a lecture the program freezes? no user input 
+      can be given and quitting is not available. Unknown cause.
 
 4. EXTRA FUNCTIONALITY
     - Create a .conf file containing: 
