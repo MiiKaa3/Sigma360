@@ -10,6 +10,7 @@ import time as t
 from datetime import datetime
 import requests
 import argparse
+from pprint import pprint
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 COOKIE_FILE = os.path.join(SCRIPT_DIR, "..", "..", "cookies.json")
@@ -17,7 +18,7 @@ COOKIE_FILE = os.path.join(SCRIPT_DIR, "..", "..", "cookies.json")
 class Fetcher():
 
     def __init__(self):
-                self.session = self.load_session("/src/cmds/cookies.json")
+        self.session = self.load_session("/src/cmds/cookies.json")
     
     # Functionality that retrieves and makes courses.json
     def load(self, outfile:str="courses.json"):
@@ -182,7 +183,10 @@ class Fetcher():
     def _get_syllabus(self, section_id: str) -> list:
         resp = self.session.get(f"https://echo360.net.au/section/{section_id}/syllabus")
         resp.raise_for_status()
-        return resp.json()["data"]
+        data = resp.json()["data"]
+        data = list(filter(lambda x: len(x["lesson"]["medias"]) > 0, data)) 
+        data = sorted(data, key=lambda x: x["lesson"]["lesson"]["createdAt"])
+        return data 
 
 def getYearSem(date: str) -> str:
         y, m, d = date.split("-")
